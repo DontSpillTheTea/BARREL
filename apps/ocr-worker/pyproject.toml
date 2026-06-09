@@ -13,7 +13,9 @@ dependencies = [
     "pillow",
     "pytesseract",
     "pytest",
-    "httpx"
+    "httpx",
+    "paddlepaddle",
+    "paddleocr"
 ]
 
 [build-system]

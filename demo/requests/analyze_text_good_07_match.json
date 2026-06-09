@@ -1,0 +1,11 @@
+{
+  "beverage_type": "distilled_spirits",
+  "text": "STONE'S THROW SPIRITS\nRye Whiskey\n\n46% Alc./Vol. (92 Proof)\n750 mL\n\nBottled by Stone’s Throw Spirits, Denver, Colorado\n\nGOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems.",
+  "expected_fields": {
+    "brand_name": "Stone's Throw Spirits",
+    "class_type": "Rye Whiskey",
+    "alcohol_content": "46% Alc./Vol. (92 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  }
+}

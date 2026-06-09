@@ -1,5 +1,9 @@
 # AGENTS.md
 
+
+**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
+
+
 # BARREL Agent Guide
 
 Project: **BARREL: Beverage Alcohol Review & Regulatory Evidence Logger**
@@ -78,27 +82,9 @@ Avoid running two competing backend designs long-term. Older Python API scaffold
 
 ## Command runner direction
 
-Use **go-task** as the primary cross-platform task runner.
-
-Primary command interface:
-
-```bash
-task dev
-```
-
-Compatibility interface:
-
-```bash
-make dev
-```
-
-Fallback interface:
-
-```bash
-docker compose up --build
-```
-
-`Taskfile.yml` is the source of truth for automation. The `Makefile` should be a thin compatibility shim that delegates to `task`.
+Taskfile.yml is the sole supported user-facing command interface.
+Docker Compose is an implementation detail wrapped by Task.
+Makefile, if present, is legacy compatibility only and should not be used in docs or normal workflows.
 
 Expected task commands:
 
@@ -108,12 +94,17 @@ task check-env
 task dev
 task up
 task down
+task restart
 task logs
 task build
+task rebuild
+task ps
 task test
 task test:api
 task test:ocr
 task test:web
+task smoke
+task smoke:backend
 task samples
 task clean
 task status

@@ -32,10 +32,9 @@ def main():
             print("[ ] Docker Compose plugin missing")
     check_command("task", "Task", required_for_demo=True)
     
-    print("\n--- Useful for native development ---")
+    print("\n--- Optional / Native tools ---")
     check_command("python3", "Python")
     check_command("git", "Git")
-    check_command("make", "Make")
     check_command("go", "Go")
     check_command("node", "Node")
     check_command("npm", "npm")

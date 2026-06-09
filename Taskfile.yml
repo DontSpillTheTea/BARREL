@@ -31,6 +31,11 @@ tasks:
     cmds:
       - docker compose down
 
+  restart:
+    desc: Restart the full stack
+    cmds:
+      - docker compose restart
+
   logs:
     desc: Follow logs from Docker Compose
     cmds:
@@ -40,6 +45,18 @@ tasks:
     desc: Build Docker images without starting them
     cmds:
       - docker compose build
+
+  rebuild:
+    desc: Down, build, and up the stack
+    cmds:
+      - task down
+      - task build
+      - task up
+
+  ps:
+    desc: Show running services
+    cmds:
+      - docker compose ps
 
   test:
     desc: Run all tests
@@ -56,12 +73,33 @@ tasks:
   test:ocr:
     desc: Run OCR worker tests
     cmds:
-      - cd apps/ocr-worker && python3 -m pytest
+      - docker compose exec -e PYTHONPATH=/app -T ocr-worker pytest
+
+  ocr:compare:
+    desc: Run OCR quality comparison
+    cmds:
+      - docker compose exec -e PYTHONPATH=/app -T ocr-worker python /scripts/compare_ocr.py
+
+  smoke:
+    desc: Run smoke tests
+    cmds:
+      - task smoke:backend
+      - task smoke:web
+
+  smoke:backend:
+    desc: Run backend smoke checks
+    cmds:
+      - python3 scripts/smoke_backend.py
+
+  smoke:web:
+    desc: Run web smoke checks
+    cmds:
+      - python3 scripts/smoke_web.py
 
   test:web:
     desc: Run Web frontend tests
     cmds:
-      - echo "TODO: Run Web tests (e.g. npm test --prefix apps/web)"
+      - cd apps/web && npm run build
     silent: true
 
   samples:

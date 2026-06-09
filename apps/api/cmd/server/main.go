@@ -5,8 +5,11 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/DontSpillTheTea/barrel/apps/api/internal/analysis"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/config"
+	"github.com/DontSpillTheTea/barrel/apps/api/internal/models"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/ocrclient"
+	"github.com/DontSpillTheTea/barrel/apps/api/internal/rules"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/security"
 )
 
@@ -21,6 +24,10 @@ type APIResponse struct {
 func main() {
 	cfg := config.Load()
 	ocrClient := ocrclient.New(cfg.OCRWorkerURL)
+	catalog, err := rules.LoadCatalog(cfg.RulesPath)
+	if err != nil {
+		log.Printf("Warning: Failed to load rules catalog: %v", err)
+	}
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -66,7 +73,8 @@ func main() {
 			return
 		}
 
-		res, err := ocrClient.Extract(header.Filename, file)
+		provider := r.FormValue("ocr_provider")
+		res, err := ocrClient.Extract(header.Filename, file, provider)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(APIResponse{Status: "error", Service: "barrel-api", Error: "ocr_worker_communication_error"})
@@ -86,9 +94,78 @@ func main() {
 		})
 	})
 
+	http.HandleFunc("/api/v1/labels/analyze-text", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		var input models.AnalysisInput
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid json"})
+			return
+		}
+
+		res := analysis.AnalyzeText(input, catalog, nil)
+		json.NewEncoder(w).Encode(res)
+	})
+
+	http.HandleFunc("/api/v1/labels/analyze", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		if err := security.ValidateUpload(r, cfg.MaxUploadMB); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		file, header, err := r.FormFile("file")
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		if !security.IsAllowedExtension(header.Filename) {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		provider := r.FormValue("ocr_provider")
+		ocrRes, err := ocrClient.Extract(header.Filename, file, provider)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		var expected models.ExpectedLabelFields
+		if expectedStr := r.FormValue("expected_json"); expectedStr != "" {
+			json.Unmarshal([]byte(expectedStr), &expected)
+		}
+		beverageType := r.FormValue("beverage_type")
+		if beverageType == "" {
+			beverageType = "distilled_spirits"
+		}
+
+		input := models.AnalysisInput{
+			BeverageType:   beverageType,
+			Text:           ocrRes.Text,
+			ExpectedFields: expected,
+		}
+
+		res := analysis.AnalyzeText(input, catalog, ocrRes)
+		res.Filename = header.Filename
+		json.NewEncoder(w).Encode(res)
+	})
+
 	port := ":8080"
 	log.Printf("Starting Go API on port %s...\n", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
+	handler := security.CORS(http.DefaultServeMux)
+	if err := http.ListenAndServe(port, handler); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

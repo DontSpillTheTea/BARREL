@@ -1,3 +1,5 @@
 module github.com/DontSpillTheTea/barrel/apps/api
 
 go 1.22
+
+require gopkg.in/yaml.v3 v3.0.1
