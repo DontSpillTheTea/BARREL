@@ -1,0 +1,16 @@
+{
+  "case_id": "G08",
+  "filename": "good_08_brand_punctuation_variation.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "punctuation normalization",
+  "expected_fields": {
+    "brand_name": "Cask and Compass",
+    "class_type": "American Single Malt Whiskey",
+    "alcohol_content": "47% Alc./Vol. (94 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Label shows & instead of and"
+}

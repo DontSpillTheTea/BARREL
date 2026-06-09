@@ -1,0 +1,16 @@
+{
+  "case_id": "G10",
+  "filename": "good_10_dense_but_readable_label.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "dense readable label",
+  "expected_fields": {
+    "brand_name": "BLACK MAPLE RESERVE",
+    "class_type": "Dark Rum",
+    "alcohol_content": "42% Alc./Vol. (84 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Dense label with many text blocks"
+}

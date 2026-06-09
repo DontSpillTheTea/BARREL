@@ -1,0 +1,16 @@
+{
+  "case_id": "M03",
+  "filename": "mediocre_03_slight_rotation.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "skew",
+  "expected_fields": {
+    "brand_name": "SILVER BRIDGE VODKA",
+    "class_type": "Vodka",
+    "alcohol_content": "40% Alc./Vol. (80 Proof)",
+    "net_contents": "1 L",
+    "government_warning_present": true
+  },
+  "notes": "10 degree rotation"
+}

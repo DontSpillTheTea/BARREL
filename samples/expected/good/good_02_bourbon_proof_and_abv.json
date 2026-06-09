@@ -1,0 +1,16 @@
+{
+  "case_id": "G02",
+  "filename": "good_02_bourbon_proof_and_abv.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "proof and ABV extraction",
+  "expected_fields": {
+    "brand_name": "BARREL HOUSE NO. 7",
+    "class_type": "Straight Bourbon Whiskey",
+    "alcohol_content": "50% Alc./Vol. (100 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Clean label, ABV and proof on same line, high contrast"
+}

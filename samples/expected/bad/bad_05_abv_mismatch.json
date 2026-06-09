@@ -1,0 +1,19 @@
+{
+  "case_id": "B05",
+  "filename": "bad_05_abv_mismatch.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "ABV mismatch",
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Label alcohol content differs",
+  "known_label_fields": {
+    "alcohol_content": "40% Alc./Vol. (80 Proof)"
+  }
+}

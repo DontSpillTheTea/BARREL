@@ -1,0 +1,16 @@
+{
+  "case_id": "M07",
+  "filename": "mediocre_07_shadow_over_abv.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "shadow over alcohol content",
+  "expected_fields": {
+    "brand_name": "Stone's Throw Spirits",
+    "class_type": "Rye Whiskey",
+    "alcohol_content": "46% Alc./Vol. (92 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Shadow darkens ABV area"
+}

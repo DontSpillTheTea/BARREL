@@ -1,0 +1,184 @@
+{
+  "cases": [
+    {
+      "case_id": "G01",
+      "category": "good",
+      "filename": "good_01_distilled_spirits_clean_front.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G02",
+      "category": "good",
+      "filename": "good_02_bourbon_proof_and_abv.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G03",
+      "category": "good",
+      "filename": "good_03_vodka_metric_net_contents.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G04",
+      "category": "good",
+      "filename": "good_04_wine_abv_decimal.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G05",
+      "category": "good",
+      "filename": "good_05_beer_abv_low_value.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G06",
+      "category": "good",
+      "filename": "good_06_import_country_origin.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G07",
+      "category": "good",
+      "filename": "good_07_brand_case_variation.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G08",
+      "category": "good",
+      "filename": "good_08_brand_punctuation_variation.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G09",
+      "category": "good",
+      "filename": "good_09_warning_on_back_label.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "G10",
+      "category": "good",
+      "filename": "good_10_dense_but_readable_label.png",
+      "expected_overall_status": "Pass"
+    },
+    {
+      "case_id": "M01",
+      "category": "mediocre",
+      "filename": "mediocre_01_slight_blur.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M02",
+      "category": "mediocre",
+      "filename": "mediocre_02_strong_blur.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M03",
+      "category": "mediocre",
+      "filename": "mediocre_03_slight_rotation.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M04",
+      "category": "mediocre",
+      "filename": "mediocre_04_perspective_angle.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M05",
+      "category": "mediocre",
+      "filename": "mediocre_05_low_contrast.png",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M06",
+      "category": "mediocre",
+      "filename": "mediocre_06_glare_over_warning.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M07",
+      "category": "mediocre",
+      "filename": "mediocre_07_shadow_over_abv.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M08",
+      "category": "mediocre",
+      "filename": "mediocre_08_small_warning_text.png",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M09",
+      "category": "mediocre",
+      "filename": "mediocre_09_curved_bottle_photo.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "M10",
+      "category": "mediocre",
+      "filename": "mediocre_10_partial_crop_edges.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "B01",
+      "category": "bad",
+      "filename": "bad_01_missing_warning.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B02",
+      "category": "bad",
+      "filename": "bad_02_wrong_warning_heading_case.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B03",
+      "category": "bad",
+      "filename": "bad_03_warning_wrong_wording.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B04",
+      "category": "bad",
+      "filename": "bad_04_missing_abv.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B05",
+      "category": "bad",
+      "filename": "bad_05_abv_mismatch.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B06",
+      "category": "bad",
+      "filename": "bad_06_missing_net_contents.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B07",
+      "category": "bad",
+      "filename": "bad_07_brand_mismatch.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B08",
+      "category": "bad",
+      "filename": "bad_08_class_type_mismatch.png",
+      "expected_overall_status": "Likely Fail"
+    },
+    {
+      "case_id": "B09",
+      "category": "bad",
+      "filename": "bad_09_unreadably_blurry.jpg",
+      "expected_overall_status": "Needs Review"
+    },
+    {
+      "case_id": "B10",
+      "category": "bad",
+      "filename": "bad_10_extreme_crop_missing_fields.jpg",
+      "expected_overall_status": "Likely Fail"
+    }
+  ]
+}

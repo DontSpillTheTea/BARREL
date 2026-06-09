@@ -1,0 +1,16 @@
+{
+  "case_id": "B03",
+  "filename": "bad_03_warning_wrong_wording.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "altered warning wording",
+  "expected_fields": {
+    "brand_name": "SILVER BRIDGE VODKA",
+    "class_type": "Vodka",
+    "alcohol_content": "40% Alc./Vol. (80 Proof)",
+    "net_contents": "1 L",
+    "government_warning_present": true
+  },
+  "notes": "Warning wording altered"
+}

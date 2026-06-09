@@ -1,0 +1,17 @@
+ruleset_id: ttb_health_warning
+ruleset_version: 0.1.0
+last_reviewed: 2026-06-06
+disclaimer: "BARREL is a review assistant, not a final legal determination system. Rule checks are advisory prototypes."
+rules:
+  - id: health_warning_statement
+    requirement: "Government Health Warning Statement must be present and match required text exactly."
+    beverage_types: ["distilled_spirits", "wine", "malt_beverages"]
+    cfr:
+      title: 27
+      part: 16
+      section: 16.21
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-16"
+    check_type: "exact_match"
+    severity: "critical"
+    explanation: "According to the Surgeon General, all alcoholic beverages bottled for sale or distribution in the United States must display the government warning."
+    required_text: "GOVERNMENT WARNING: (1) According to the Surgeon General, women should not drink alcoholic beverages during pregnancy because of the risk of birth defects. (2) Consumption of alcoholic beverages impairs your ability to drive a car or operate machinery, and may cause health problems."

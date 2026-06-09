@@ -1,0 +1,16 @@
+{
+  "case_id": "G01",
+  "filename": "good_01_distilled_spirits_clean_front.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "clean baseline",
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Clean baseline distilled spirits label with all required prototype fields visible."
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "B01",
+  "filename": "bad_01_missing_warning.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "missing government warning",
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": false
+  },
+  "notes": "Omit government warning"
+}

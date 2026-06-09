@@ -1,0 +1,31 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+venv/
+env/
+
+# Node/Vite
+node_modules/
+dist/
+.vite/
+
+# OS Junk
+.DS_Store
+Thumbs.db
+
+# Logs & Output
+*.log
+uploads/
+output/

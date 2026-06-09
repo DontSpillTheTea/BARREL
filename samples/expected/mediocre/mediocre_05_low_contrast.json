@@ -1,0 +1,16 @@
+{
+  "case_id": "M05",
+  "filename": "mediocre_05_low_contrast.png",
+  "category": "mediocre",
+  "beverage_type": "malt_beverage",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "low contrast",
+  "expected_fields": {
+    "brand_name": "RIVER MALT BREWING",
+    "class_type": "Lager Beer",
+    "alcohol_content": "5.2% Alc./Vol.",
+    "net_contents": "12 fl oz",
+    "government_warning_present": true
+  },
+  "notes": "Beige background with light gray text"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "M10",
+  "filename": "mediocre_10_partial_crop_edges.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "partial crop",
+  "expected_fields": {
+    "brand_name": "BLACK MAPLE RESERVE",
+    "class_type": "Dark Rum",
+    "alcohol_content": "42% Alc./Vol. (84 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Cropped slightly at edges"
+}

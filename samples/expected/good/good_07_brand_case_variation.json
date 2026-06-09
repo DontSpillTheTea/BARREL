@@ -1,0 +1,16 @@
+{
+  "case_id": "G07",
+  "filename": "good_07_brand_case_variation.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "fuzzy brand casing",
+  "expected_fields": {
+    "brand_name": "Stone's Throw Spirits",
+    "class_type": "Rye Whiskey",
+    "alcohol_content": "46% Alc./Vol. (92 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Brand appears as uppercase on label"
+}

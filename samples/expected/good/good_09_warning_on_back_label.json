@@ -1,0 +1,16 @@
+{
+  "case_id": "G09",
+  "filename": "good_09_warning_on_back_label.png",
+  "category": "good",
+  "beverage_type": "wine",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "warning lower/back label placement",
+  "expected_fields": {
+    "brand_name": "NORTHSTAR BOTTLING CO.",
+    "class_type": "White Wine",
+    "alcohol_content": "12.8% Alc./Vol.",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Back-label style with dense text"
+}

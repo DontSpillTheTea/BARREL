@@ -1,0 +1,19 @@
+{
+  "case_id": "B04",
+  "filename": "bad_04_missing_abv.png",
+  "category": "bad",
+  "beverage_type": "wine",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "missing alcohol content",
+  "expected_fields": {
+    "brand_name": "PINE RIDGE CELLARS",
+    "class_type": "Red Wine",
+    "alcohol_content": "13.5% Alc./Vol.",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Omit alcohol content",
+  "known_label_fields": {
+    "alcohol_content": null
+  }
+}

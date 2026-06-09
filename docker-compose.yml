@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: apps/web
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./apps/web:/app
+    # TODO: Add specific command once Vite is set up
+
+  api:
+    build:
+      context: apps/api
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=development
+      - OCR_PROVIDER=worker
+      - OCR_WORKER_URL=http://ocr-worker:9090
+      - RULESET_PATH=/rules/ttb
+      - AI_PROVIDER=none
+      - MAX_UPLOAD_MB=25
+    volumes:
+      - ./rules:/rules:ro
+      - ./apps/api:/app
+    depends_on:
+      - ocr-worker
+    # TODO: Add specific command to start Go API
+
+  ocr-worker:
+    build:
+      context: apps/ocr-worker
+    environment:
+      - OCR_ENGINE=tesseract
+    volumes:
+      - ./apps/ocr-worker:/app
+    # Note: Not exposing ports here to keep it internal unless debugging
+    # TODO: Add specific command to start Python worker

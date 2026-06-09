@@ -1,0 +1,19 @@
+{
+  "case_id": "B08",
+  "filename": "bad_08_class_type_mismatch.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "class/type mismatch",
+  "expected_fields": {
+    "brand_name": "BARREL HOUSE NO. 7",
+    "class_type": "Straight Bourbon Whiskey",
+    "alcohol_content": "50% Alc./Vol. (100 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Class type mismatch",
+  "known_label_fields": {
+    "class_type": "Vodka"
+  }
+}

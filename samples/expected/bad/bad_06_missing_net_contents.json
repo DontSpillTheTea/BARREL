@@ -1,0 +1,19 @@
+{
+  "case_id": "B06",
+  "filename": "bad_06_missing_net_contents.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "missing net contents",
+  "expected_fields": {
+    "brand_name": "CASK & COMPASS",
+    "class_type": "Blended Scotch Whisky",
+    "alcohol_content": "43% Alc./Vol. (86 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Omit net contents",
+  "known_label_fields": {
+    "net_contents": null
+  }
+}

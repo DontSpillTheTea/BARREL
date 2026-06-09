@@ -1,0 +1,16 @@
+{
+  "case_id": "B02",
+  "filename": "bad_02_wrong_warning_heading_case.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "government warning heading case",
+  "expected_fields": {
+    "brand_name": "BARREL HOUSE NO. 7",
+    "class_type": "Straight Bourbon Whiskey",
+    "alcohol_content": "50% Alc./Vol. (100 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Change GOVERNMENT WARNING: to Government Warning:"
+}

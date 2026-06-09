@@ -1,0 +1,21 @@
+[project]
+name = "barrel-ocr-worker"
+version = "0.1.0"
+description = "BARREL OCR and Image Processing Worker"
+authors = [
+    {name = "BARREL Team"}
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "python-multipart",
+    "pillow",
+    "pytesseract",
+    "pytest",
+    "httpx"
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

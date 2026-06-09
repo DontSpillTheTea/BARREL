@@ -1,0 +1,16 @@
+{
+  "case_id": "B09",
+  "filename": "bad_09_unreadably_blurry.jpg",
+  "category": "bad",
+  "beverage_type": "wine",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "unreadable image",
+  "expected_fields": {
+    "brand_name": "NORTHSTAR BOTTLING CO.",
+    "class_type": "White Wine",
+    "alcohol_content": "12.8% Alc./Vol.",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Extremely blurry"
+}

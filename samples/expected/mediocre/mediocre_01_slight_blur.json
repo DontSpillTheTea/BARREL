@@ -1,0 +1,16 @@
+{
+  "case_id": "M01",
+  "filename": "mediocre_01_slight_blur.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "mild blur",
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Slightly blurred"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "M04",
+  "filename": "mediocre_04_perspective_angle.jpg",
+  "category": "mediocre",
+  "beverage_type": "wine",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "perspective distortion",
+  "expected_fields": {
+    "brand_name": "PINE RIDGE CELLARS",
+    "class_type": "Red Wine",
+    "alcohol_content": "13.5% Alc./Vol.",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Perspective trapezoid distortion"
+}

@@ -1,0 +1,16 @@
+{
+  "case_id": "M06",
+  "filename": "mediocre_06_glare_over_warning.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "glare over warning",
+  "expected_fields": {
+    "brand_name": "CASK & COMPASS",
+    "class_type": "Blended Scotch Whisky",
+    "alcohol_content": "43% Alc./Vol. (86 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Light glare crosses warning"
+}

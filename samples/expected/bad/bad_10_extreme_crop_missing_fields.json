@@ -1,0 +1,20 @@
+{
+  "case_id": "B10",
+  "filename": "bad_10_extreme_crop_missing_fields.jpg",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "crop removes required fields",
+  "expected_fields": {
+    "brand_name": "BLACK MAPLE RESERVE",
+    "class_type": "Dark Rum",
+    "alcohol_content": "42% Alc./Vol. (84 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Crop out bottom half",
+  "known_label_fields": {
+    "net_contents": null,
+    "government_warning_present": false
+  }
+}

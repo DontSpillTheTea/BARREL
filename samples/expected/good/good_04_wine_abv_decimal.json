@@ -1,0 +1,16 @@
+{
+  "case_id": "G04",
+  "filename": "good_04_wine_abv_decimal.png",
+  "category": "good",
+  "beverage_type": "wine",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "decimal ABV",
+  "expected_fields": {
+    "brand_name": "PINE RIDGE CELLARS",
+    "class_type": "Red Wine",
+    "alcohol_content": "13.5% Alc./Vol.",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Elegant but readable wine label"
+}

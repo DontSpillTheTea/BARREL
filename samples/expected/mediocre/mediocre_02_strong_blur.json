@@ -1,0 +1,16 @@
+{
+  "case_id": "M02",
+  "filename": "mediocre_02_strong_blur.jpg",
+  "category": "mediocre",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Needs Review",
+  "primary_test_axis": "stronger blur",
+  "expected_fields": {
+    "brand_name": "BARREL HOUSE NO. 7",
+    "class_type": "Straight Bourbon Whiskey",
+    "alcohol_content": "50% Alc./Vol. (100 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Noticeably blurred"
+}

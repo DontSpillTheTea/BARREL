@@ -1,0 +1,19 @@
+{
+  "case_id": "B07",
+  "filename": "bad_07_brand_mismatch.png",
+  "category": "bad",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Likely Fail",
+  "primary_test_axis": "brand mismatch",
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL",
+    "government_warning_present": true
+  },
+  "notes": "Brand mismatch",
+  "known_label_fields": {
+    "brand_name": "COPPER FOX HOLLOW"
+  }
+}

@@ -1,0 +1,52 @@
+ruleset_id: ttb_wine
+ruleset_version: 0.1.0
+last_reviewed: 2026-06-06
+disclaimer: "BARREL is a review assistant, not a final legal determination system. Rule checks are advisory prototypes."
+rules:
+  - id: wine_brand_name
+    requirement: "Brand name must be present."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.33
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4"
+    check_type: "presence"
+    severity: "high"
+    explanation: "The brand name under which the wine is sold must be stated."
+
+  - id: wine_class_type
+    requirement: "Class, type, or other designation is required."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.34
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4"
+    check_type: "fuzzy_match_list"
+    severity: "high"
+    explanation: "A statement of the class and type of the wine."
+
+  - id: wine_alcohol_content
+    requirement: "Alcohol content must be stated in percent by volume, or as a 'Table Wine' if applicable."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.36
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Generally stated as a percentage. May use 'Table Wine' if under 14%."
+
+  - id: wine_net_contents
+    requirement: "Net contents must be stated."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.37
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Must use authorized standards of fill."

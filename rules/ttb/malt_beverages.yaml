@@ -1,0 +1,40 @@
+ruleset_id: ttb_malt_beverages
+ruleset_version: 0.1.0
+last_reviewed: 2026-06-06
+disclaimer: "BARREL is a review assistant, not a final legal determination system. Rule checks are advisory prototypes."
+rules:
+  - id: malt_brand_name
+    requirement: "Brand name must be present."
+    beverage_types: ["malt_beverages"]
+    cfr:
+      title: 27
+      part: 7
+      section: 7.23
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-7"
+    check_type: "presence"
+    severity: "high"
+    explanation: "The brand name under which the malt beverage is sold must be stated."
+
+  - id: malt_class_type
+    requirement: "Class and type must be stated."
+    beverage_types: ["malt_beverages"]
+    cfr:
+      title: 27
+      part: 7
+      section: 7.24
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-7"
+    check_type: "fuzzy_match_list"
+    severity: "high"
+    explanation: "Must state class (e.g., Beer, Ale, Porter, Stout)."
+
+  - id: malt_net_contents
+    requirement: "Net contents must be stated."
+    beverage_types: ["malt_beverages"]
+    cfr:
+      title: 27
+      part: 7
+      section: 7.27
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-7"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Usually stated in fluid ounces, pints, and quarts."

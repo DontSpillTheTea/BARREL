@@ -1,0 +1,16 @@
+{
+  "case_id": "G03",
+  "filename": "good_03_vodka_metric_net_contents.png",
+  "category": "good",
+  "beverage_type": "distilled_spirits",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "metric net contents",
+  "expected_fields": {
+    "brand_name": "SILVER BRIDGE VODKA",
+    "class_type": "Vodka",
+    "alcohol_content": "40% Alc./Vol. (80 Proof)",
+    "net_contents": "1 L",
+    "government_warning_present": true
+  },
+  "notes": "Minimalist white label, crisp sans-serif text"
+}

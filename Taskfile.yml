@@ -1,0 +1,81 @@
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  help:
+    cmds:
+      - task --list
+    silent: true
+
+  check-env:
+    desc: Check local tooling
+    cmds:
+      - python3 scripts/check_env.py
+
+  dev:
+    desc: Run the full stack in development mode using Docker Compose
+    cmds:
+      - docker compose up --build
+
+  up:
+    desc: Run the full stack in the background
+    cmds:
+      - docker compose up -d --build
+
+  down:
+    desc: Stop the full stack
+    cmds:
+      - docker compose down
+
+  logs:
+    desc: Follow logs from Docker Compose
+    cmds:
+      - docker compose logs -f
+
+  build:
+    desc: Build Docker images without starting them
+    cmds:
+      - docker compose build
+
+  test:
+    desc: Run all tests
+    cmds:
+      - task test:api
+      - task test:ocr
+      - task test:web
+
+  test:api:
+    desc: Run API tests
+    cmds:
+      - cd apps/api && go test ./...
+
+  test:ocr:
+    desc: Run OCR worker tests
+    cmds:
+      - cd apps/ocr-worker && python3 -m pytest
+
+  test:web:
+    desc: Run Web frontend tests
+    cmds:
+      - echo "TODO: Run Web tests (e.g. npm test --prefix apps/web)"
+    silent: true
+
+  samples:
+    desc: Build sample zip batches
+    cmds:
+      - python3 scripts/build_sample_batches.py
+
+  clean:
+    desc: Clean temporary files
+    cmds:
+      - echo "Cleaning up..."
+      - docker compose down -v --remove-orphans || true
+
+  status:
+    desc: Check git status
+    cmds:
+      - git status --short

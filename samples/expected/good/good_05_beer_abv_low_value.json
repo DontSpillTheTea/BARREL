@@ -1,0 +1,16 @@
+{
+  "case_id": "G05",
+  "filename": "good_05_beer_abv_low_value.png",
+  "category": "good",
+  "beverage_type": "malt_beverage",
+  "expected_overall_status": "Pass",
+  "primary_test_axis": "lower ABV beer label",
+  "expected_fields": {
+    "brand_name": "RIVER MALT BREWING",
+    "class_type": "Lager Beer",
+    "alcohol_content": "5.2% Alc./Vol.",
+    "net_contents": "12 fl oz",
+    "government_warning_present": true
+  },
+  "notes": "Beer can label style"
+}

@@ -1,0 +1,52 @@
+ruleset_id: ttb_distilled_spirits
+ruleset_version: 0.1.0
+last_reviewed: 2026-06-06
+disclaimer: "BARREL is a review assistant, not a final legal determination system. Rule checks are advisory prototypes."
+rules:
+  - id: spirits_brand_name
+    requirement: "Brand name must be present and legible."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.63
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+    check_type: "presence"
+    severity: "high"
+    explanation: "The brand name must be shown in the normal line of vision on the front of the container."
+
+  - id: spirits_class_type
+    requirement: "Product must have a recognized class and type designation (e.g., Vodka, Bourbon Whiskey)."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.141
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+    check_type: "fuzzy_match_list"
+    severity: "high"
+    explanation: "Distilled spirits must be labeled with their appropriate class and type according to the standards of identity."
+
+  - id: spirits_alcohol_content
+    requirement: "Alcohol content by volume (ABV) must be stated. Formatting requirements apply."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.65
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Must be stated as '% alcohol by volume' or '% alc/vol', optionally with proof."
+
+  - id: spirits_net_contents
+    requirement: "Net contents must be stated in standard metric volumes (e.g., 750 mL)."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.73
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Must use authorized metric standards of fill."
