@@ -158,6 +158,18 @@ Docs are part of the deliverable.
 
 ---
 
+## Long-running command discipline
+
+- Do not repeatedly poll background task logs.
+- Do not repeatedly call background status tools in a loop.
+- Prefer one foreground command with a clear timeout.
+- If a long-running command is necessary, run it once and wait for completion.
+- Use at most one targeted log inspection per failure hypothesis.
+- Never `cat`/tail the same task log repeatedly.
+- For OCR warmup/inference, use Task commands with built-in polling and bounded timeouts.
+
+---
+
 ## Product direction
 
 Target workflow:

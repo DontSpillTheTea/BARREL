@@ -12,6 +12,7 @@ Current implementation status is scaffold/POC, not full app.
 - Docker Compose is used for repeatability across Ubuntu and Windows.
 - Windows recommendation is Docker Desktop + WSL2.
 - Local-first architecture; Azure Key Vault is an optional future integration, not required locally.
+- Two local OCR paths: a Fast path (Tesseract, default) and an optional Deep path (PaddleOCR, enabled via config).
 
 ## Getting Started
 
@@ -68,6 +69,20 @@ curl -sS -X POST http://localhost:8080/api/v1/labels/analyze \
 - Web dashboard is at `http://localhost:5173`.
 - API is at `http://localhost:8080`.
 - OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
+- `/health` means the process is alive. `/ready` means the OCR provider is ready for requests.
 - AI escalation is metadata-only (no actual AI provider is called in the current prototype).
+- If accurate OCR is slow, that is surfaced honestly.
 - Batch upload remains a future feature.
+
+## Key Technical Rules
+
+* **Local-First Context:** Do not send labels or text to cloud AI providers unless explicitly allowed in the active feature phase.
+* **Accuracy-First OCR:** PaddleOCR is the default deep OCR provider. It is warmed and cached by the OCR worker. Tesseract is used only as an explicit fallback.
+* **Async Analysis:** Browser analysis uses the `POST /api/v1/labels/analyze-async` job endpoint. Initial upload response is fast, and the frontend polls for completion. This prevents browser timeouts on slow CPU hardware.
+* **No Magic Updates:** Changes to project goals or architecture must be updated in `docs/` or `AGENTS.md`.
+
+## Scripts & Validation
+
+* `task smoke` - Validates full component topology and API/OCR communication.
+* `task smoke:fast-api` - Test text-only API performance.
+* `task smoke:async-analysis` - Validates the full async image OCR flow using the accurate local provider.

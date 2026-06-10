@@ -36,7 +36,13 @@ services:
     build:
       context: apps/ocr-worker
     environment:
-      - OCR_PROVIDER=auto
+      - OCR_PROVIDER=paddleocr
+      - OCR_DEEP_PROVIDER=paddleocr
+      - OCR_DEEP_OCR_ENABLED=true
+      - OCR_WARMUP_ON_STARTUP=true
+      - OCR_REQUIRE_READY_FOR_ANALYSIS=true
+      - OCR_ALLOW_FAST_FALLBACK=false
+      - OCR_DEEP_PROVIDER_TIMEOUT_SECONDS=60
     volumes:
       - ./apps/ocr-worker:/app
       - ./samples:/samples:ro

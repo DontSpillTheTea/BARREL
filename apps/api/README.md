@@ -14,7 +14,8 @@ This directory contains the Go API for BARREL.
 * `GET /health` - API health check
 * `GET /health/ocr-worker` - Proxies health check to the OCR worker
 * `POST /api/v1/ocr/extract` - Uploads an image (PNG, JPG, JPEG) to extract raw OCR text, image quality, and OCR confidence via the worker.
-* `POST /api/v1/labels/analyze-text` - Pure text endpoint to perform deterministic extraction and compliance logic without needing OCR execution.
+* `POST /api/v1/labels/analyze-async`: Primary image analysis endpoint. Reads the file into memory and spins up a background OCR and analysis job to avoid browser timeouts on local hardware. Returns 202 with a job ID.
+* `GET /api/v1/jobs/{job_id}`: Poll endpoint for async jobs.
 * `POST /api/v1/labels/analyze` - Combines OCR extraction and text analysis into a single pass to produce full regulatory breadcrumbs and confidence scoring.
 
 *Note: Rules are loaded from `rules/ttb/`. This is still a review assistant, not a final legal determination system.*

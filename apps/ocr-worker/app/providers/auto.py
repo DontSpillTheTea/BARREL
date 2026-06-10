@@ -1,52 +1,46 @@
 import os
 from PIL import Image
 from .base import BaseOCRProvider, OCRResult
-from .tesseract import TesseractProvider
-from .paddleocr_provider import PaddleOCRProvider
 
 class AutoProvider(BaseOCRProvider):
     def __init__(self):
-        self.tesseract = TesseractProvider()
-        self.paddle = PaddleOCRProvider()
         self.threshold = float(os.environ.get("OCR_LOCAL_CONFIDENCE_THRESHOLD", "65"))
         self.min_length = int(os.environ.get("OCR_MIN_TEXT_LENGTH", "80"))
 
     def is_available(self) -> bool:
-        return self.tesseract.is_available() or self.paddle.is_available()
+        return True # Handled by the manager logic
 
     def extract(self, image: Image.Image) -> dict:
-        if not self.is_available():
+        from .manager import manager
+        
+        tesseract = manager.get_provider("tesseract")
+        paddle = manager.get_provider("paddleocr")
+        
+        if manager.requires_ready_for_analysis:
+            paddle_state = manager.get_state("paddleocr").get("state")
+            if paddle_state != "ready":
+                if not manager.allow_fast_fallback:
+                    return {
+                        "status": "error",
+                        "error_code": "ocr_provider_not_ready",
+                        "message": "Required accurate provider (PaddleOCR) is not ready, and fast fallback is disabled.",
+                        "selected_provider": "auto"
+                    }
+        
+        if not tesseract and not paddle:
             raise RuntimeError("no_ocr_providers_available")
 
         results = []
         selected_result = None
         selection_reason = ""
 
-        # Step 1: Run Tesseract
-        tess_res = None
-        if self.tesseract.is_available():
-            try:
-                tess_res = self.tesseract.extract(image)
-                results.append({
-                    "provider": "tesseract",
-                    "mean_confidence": tess_res.mean_confidence,
-                    "text_length": len(tess_res.text)
-                })
-            except Exception as e:
-                print(f"Tesseract failed in auto: {e}")
-
-        # Step 2: Check if Tesseract is good enough
-        if tess_res is not None:
-            if tess_res.mean_confidence >= self.threshold and len(tess_res.text) >= self.min_length:
-                selected_result = tess_res
-                selection_reason = f"Tesseract confidence ({tess_res.mean_confidence}) >= {self.threshold} and text length ok."
-                return self._format_response("auto", selected_result.provider, results, selection_reason, selected_result)
-
-        # Step 3: If not, try PaddleOCR
+        # Auto logic: if accurate is default/required, use it first or prefer it.
+        # But wait, Auto should prefer PaddleOCR if it's the "accurate" provider.
+        # Let's change the auto logic to try PaddleOCR first if available and ready.
         paddle_res = None
-        if self.paddle.is_available():
+        if paddle and manager.get_state("paddleocr").get("state") == "ready":
             try:
-                paddle_res = self.paddle.extract(image)
+                paddle_res = paddle.extract(image)
                 results.append({
                     "provider": "paddleocr",
                     "mean_confidence": paddle_res.mean_confidence,
@@ -55,23 +49,45 @@ class AutoProvider(BaseOCRProvider):
             except Exception as e:
                 print(f"PaddleOCR failed in auto: {e}")
 
-        # Step 4: Compare and select
+        # If PaddleOCR is good enough, or it's the only one, return it.
         if paddle_res is not None:
-            if tess_res is None:
+            if paddle_res.mean_confidence >= self.threshold and len(paddle_res.text) >= self.min_length:
                 selected_result = paddle_res
-                selection_reason = "Tesseract failed or unavailable, used PaddleOCR."
-            else:
-                # Compare Tesseract and PaddleOCR
-                if paddle_res.mean_confidence > tess_res.mean_confidence or len(paddle_res.text) > len(tess_res.text):
-                    selected_result = paddle_res
-                    selection_reason = "Tesseract confidence below threshold or text too short; PaddleOCR returned higher confidence or more text."
-                else:
-                    selected_result = tess_res
-                    selection_reason = "Tesseract confidence below threshold, but PaddleOCR was not better."
-        else:
-            if tess_res is not None:
+                selection_reason = f"PaddleOCR confidence ({paddle_res.mean_confidence}) >= {self.threshold} and text length ok."
+                return self._format_response("auto", selected_result.provider, results, selection_reason, selected_result)
+
+        # Try Tesseract if PaddleOCR wasn't good enough or unavailable
+        tess_res = None
+        if tesseract:
+            try:
+                tess_res = tesseract.extract(image)
+                results.append({
+                    "provider": "tesseract",
+                    "mean_confidence": tess_res.mean_confidence,
+                    "text_length": len(tess_res.text)
+                })
+            except Exception as e:
+                print(f"Tesseract failed in auto: {e}")
+
+        # Compare and select
+        if tess_res is not None:
+            if paddle_res is None:
                 selected_result = tess_res
-                selection_reason = "Tesseract confidence below threshold, and PaddleOCR failed/unavailable."
+                selection_reason = "PaddleOCR failed or unavailable, used Tesseract fallback."
+                selected_result.warnings.append("Accurate OCR unavailable; fast fallback used. Result requires review.")
+            else:
+                # Both ran
+                if tess_res.mean_confidence > paddle_res.mean_confidence or len(tess_res.text) > len(paddle_res.text):
+                    selected_result = tess_res
+                    selection_reason = "PaddleOCR confidence below threshold; Tesseract returned higher confidence or more text."
+                    selected_result.warnings.append("Accurate OCR unavailable; fast fallback used. Result requires review.")
+                else:
+                    selected_result = paddle_res
+                    selection_reason = "PaddleOCR confidence below threshold, but Tesseract was not better."
+        else:
+            if paddle_res is not None:
+                selected_result = paddle_res
+                selection_reason = "PaddleOCR confidence below threshold, and Tesseract failed/unavailable."
             else:
                 raise RuntimeError("All OCR providers failed.")
 
@@ -79,6 +95,7 @@ class AutoProvider(BaseOCRProvider):
 
     def _format_response(self, engine, selected, provider_results, reason, result: OCRResult):
         return {
+            "status": "ok",
             "ocr_engine": engine,
             "selected_provider": selected,
             "provider_results": provider_results,

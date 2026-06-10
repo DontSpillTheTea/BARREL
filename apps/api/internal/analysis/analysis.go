@@ -5,7 +5,7 @@ import (
 	"math"
 
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/models"
-	"github.com/DontSpillTheTea/barrel/apps/api/internal/ocrclient"
+	"github.com/DontSpillTheTea/barrel/apps/api/internal/ocr/providers"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/rules"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/validators"
 )
@@ -27,7 +27,7 @@ func getRule(catalog *rules.Catalog, id string) models.RuleBreadcrumb {
 	return models.RuleBreadcrumb{}
 }
 
-func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata *ocrclient.OCRResponse) models.LabelAnalysisResult {
+func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata *providers.OCRResult) models.LabelAnalysisResult {
 	res := models.LabelAnalysisResult{
 		BeverageType:  input.BeverageType,
 		OCRText:       input.Text,
@@ -240,6 +240,18 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 			hasMissingOrAmbiguous = true
 		}
 	}
+	
+	if ocrMetadata != nil && len(ocrMetadata.Warnings) > 0 {
+		res.Warnings = append(res.Warnings, ocrMetadata.Warnings...)
+		for _, w := range ocrMetadata.Warnings {
+			if w == "Accurate OCR unavailable; fast fallback used. Result requires review." || w == "Deep OCR was not ready. Used fast OCR fallback." || w == "Fast fallback OCR may miss or corrupt label text. Results require review." {
+				if res.OverallStatus == "Pass" {
+					res.OverallStatus = "Needs Review"
+				}
+				hasMissingOrAmbiguous = true
+			}
+		}
+	}
 
 	if isOcrPoor {
 		res.AIEscalation.Eligible = true
@@ -250,15 +262,6 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 	} else if ocrMetadata != nil && ocrMetadata.Status == "error" {
 		res.AIEscalation.Eligible = true
 		res.AIEscalation.Reason = "OCR provider was unavailable or errored."
-	} else if ocrMetadata != nil && len(ocrMetadata.ProviderResults) > 1 {
-		// Just a heuristic example for provider outputs disagreeing materially
-		// In a real scenario, we might do a diff on the text.
-		p1 := ocrMetadata.ProviderResults[0]
-		p2 := ocrMetadata.ProviderResults[1]
-		if p1.MeanConfidence > 0 && p2.MeanConfidence > 0 && abs(p1.MeanConfidence-p2.MeanConfidence) > 30 {
-			res.AIEscalation.Eligible = true
-			res.AIEscalation.Reason = "OCR provider outputs disagree materially."
-		}
 	}
 
 	return res

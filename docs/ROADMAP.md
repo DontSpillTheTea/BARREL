@@ -18,18 +18,23 @@
 6. rule loading (Completed & Verified)
 7. deterministic extraction (Completed & Verified)
 
-## Phase 2: Analysis & UI
-8. single-image analysis
-9. batch/zip analysis
-10. frontend upload UI
-11. reporting and polish
+## Phase 2: Analysis & UI (Completed)
+8. single-image analysis (Completed - Async)
+9. frontend upload UI (Completed)
+10. Reviewer History and Storage (Completed)
+
+## Phase 3: Azure Cloud Deployment (In Progress)
+11. Azure Provider integration (Vision API) (Completed)
+12. Azure Infrastructure (Terraform/Container Apps) (Scaffolded)
+13. Security tokens (Completed)
+14. Batch/zip analysis (Future)
 
 ## Current Status & Endpoints
 
-- Local CORS is enabled for the Vite dev dashboard to communicate with the API.
 - Web dashboard is at `http://localhost:5173`.
 - API is at `http://localhost:8080`.
 - OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
+- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze-async`.
+- Reviewer workspace with history and decision states is integrated.
 - AI escalation is metadata-only (no actual AI provider is called in the current prototype).
 - Batch upload remains a future feature.

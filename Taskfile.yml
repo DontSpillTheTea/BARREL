@@ -75,16 +75,45 @@ tasks:
     cmds:
       - docker compose exec -e PYTHONPATH=/app -T ocr-worker pytest
 
+  ocr:ready:
+    desc: Check OCR readiness
+    cmds:
+      - curl -s http://localhost:8080/health/ocr-worker-ready | grep -q '"status":"ready"' || (echo "OCR not ready"; exit 1)
+      - echo "OCR is ready"
+
+  ocr:warmup:
+    desc: Wait for OCR to be ready
+    cmds:
+      - |
+        echo "Waiting for OCR worker to be ready..."
+        for i in $(seq 1 60); do
+          if curl -s http://localhost:8080/health/ocr-worker-ready | grep -q '"status":"ready"'; then
+            echo "OCR is ready!"
+            exit 0
+          fi
+          echo -n "."
+          sleep 1
+        done
+        echo "Timeout waiting for OCR."
+        exit 1
+
   ocr:compare:
-    desc: Run OCR quality comparison
+    desc: Diagnostic script to compare OCR outputs
     cmds:
       - docker compose exec -e PYTHONPATH=/app -T ocr-worker python /scripts/compare_ocr.py
 
   smoke:
-    desc: Run smoke tests
+    desc: Run fast infrastructure smoke tests
     cmds:
       - task smoke:backend
       - task smoke:web
+      - task smoke:performance
+
+  smoke:ocr-accurate:
+    desc: Run accurate OCR smoke checks
+    cmds:
+      - task ocr:warmup
+      - python3 scripts/smoke_ocr_accurate.py
 
   smoke:backend:
     desc: Run backend smoke checks
@@ -95,6 +124,17 @@ tasks:
     desc: Run web smoke checks
     cmds:
       - python3 scripts/smoke_web.py
+
+  smoke:async-analysis:
+    desc: Run async image analysis smoke test
+    cmds:
+      - task: ocr:warmup
+      - python3 scripts/smoke_async_analysis.py
+
+  smoke:fast-api:
+    desc: Test text-only API performance
+    cmds:
+      - python3 scripts/smoke_performance.py
 
   test:web:
     desc: Run Web frontend tests
@@ -117,3 +157,50 @@ tasks:
     desc: Check git status
     cmds:
       - git status --short
+
+  azure:check:
+    desc: Check if Azure CLI is installed
+    cmds:
+      - az version || (echo "Azure CLI not found. Please install it." && exit 1)
+
+  azure:login-check:
+    desc: Check Azure CLI login
+    cmds:
+      - az account show || (echo "Please run 'az login'" && exit 1)
+
+  azure:build:
+    desc: Build images for Azure Container Registry
+    cmds:
+      - echo "Building ACR images..."
+      # Add docker build commands here later
+      
+  azure:infra:init:
+    desc: Initialize Terraform
+    cmds:
+      - cd infra/terraform/dev && terraform init
+
+  azure:infra:plan:
+    desc: Plan Terraform deployment
+    cmds:
+      - cd infra/terraform/dev && terraform plan
+
+  azure:infra:apply:
+    desc: Apply Terraform deployment
+    cmds:
+      - cd infra/terraform/dev && terraform apply -auto-approve
+
+  azure:infra:destroy:
+    desc: Destroy Terraform deployment
+    cmds:
+      - cd infra/terraform/dev && terraform destroy -auto-approve
+
+  azure:deploy:
+    desc: Deploy images to Azure
+    cmds:
+      - echo "Deploying to Azure..."
+      # Add deployment scripts here
+
+  azure:smoke:
+    desc: Run smoke tests against Azure deployment
+    cmds:
+      - echo "Running Azure smoke tests..."

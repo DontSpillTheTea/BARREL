@@ -1,21 +1,24 @@
 import io
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 from PIL import Image
 
 from app.main import app
 from app.image.quality import calculate_quality
 
-client = TestClient(app)
+# Trigger lifespan for tests
+with TestClient(app) as client:
+    pass
 
 def test_unsupported_file_type():
-    response = client.post(
-        "/ocr/extract",
-        files={"file": ("test.txt", b"not an image", "text/plain")}
-    )
-    assert response.status_code == 400
-    assert response.json()["error_code"] == "unsupported_file"
+    with TestClient(app) as client:
+        response = client.post(
+            "/ocr/extract",
+            files={"file": ("test.txt", b"not an image", "text/plain")}
+        )
+        assert response.status_code == 400
+        assert response.json()["error_code"] == "unsupported_file"
 
 def test_image_quality_scoring_function():
     img = Image.new('RGB', (100, 100), color='gray')
@@ -26,37 +29,40 @@ def test_image_quality_scoring_function():
     assert "blur_score" in quality
 
 def test_successful_ocr_mocked():
-    with patch("app.main.TesseractProvider") as mock_tess:
-        mock_instance = mock_tess.return_value
-        mock_instance.is_available.return_value = True
-        
-        # We need a mock OCRResult
+    with patch("app.main.manager") as mock_manager:
         from app.providers.base import OCRResult
-        mock_instance.extract.return_value = OCRResult(
-            provider="tesseract",
-            text="Mock text",
-            mean_confidence=95.0,
+        
+        mock_provider = MagicMock()
+        mock_provider.extract.return_value = OCRResult(
+            provider="paddleocr",
+            text="Mock text paddle",
+            mean_confidence=98.0,
             warnings=[],
-            metadata={"text_length": 9}
+            metadata={"text_length": 16}
         )
+        
+        mock_manager.get_provider.return_value = mock_provider
+        mock_manager.default_provider = "paddleocr"
+        mock_manager.get_state.return_value = {"state": "ready"}
         
         img = Image.new('RGB', (100, 100), color='white')
         img_byte_arr = io.BytesIO()
         img.save(img_byte_arr, format='PNG')
         img_byte_arr.seek(0)
         
-        response = client.post(
-            "/ocr/extract",
-            data={"provider": "tesseract"},
-            files={"file": ("test.png", img_byte_arr, "image/png")}
-        )
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ok"
-        assert data["text"] == "Mock text"
-        assert data["mean_confidence"] == 95.0
-        assert data["image_quality"]["width"] == 100
+        with TestClient(app) as client:
+            response = client.post(
+                "/ocr/extract",
+                data={"provider": "paddleocr"},
+                files={"file": ("test.png", img_byte_arr, "image/png")}
+            )
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "ok"
+            assert data["text"] == "Mock text paddle"
+            assert data["mean_confidence"] == 98.0
+            assert data["image_quality"]["width"] == 100
 
 def test_unsupported_provider():
     img = Image.new('RGB', (100, 100), color='white')
@@ -64,16 +70,37 @@ def test_unsupported_provider():
     img.save(img_byte_arr, format='PNG')
     img_byte_arr.seek(0)
     
-    with patch("app.main.PaddleOCRProvider") as mock_pad:
-        mock_instance = mock_pad.return_value
-        mock_instance.is_available.return_value = False
+    with patch("app.main.manager") as mock_manager:
+        mock_manager.get_provider.return_value = None
+        mock_manager.get_state.return_value = {"state": "ready"} # to bypass the not ready check
+        mock_manager.default_provider = "tesseract"
         
-        response = client.post(
-            "/ocr/extract",
-            data={"provider": "paddleocr"},
-            files={"file": ("test.png", img_byte_arr, "image/png")}
-        )
-        
-        assert response.status_code == 503
-        assert response.json()["error_code"] == "ocr_engine_unavailable"
+        with TestClient(app) as client:
+            response = client.post(
+                "/ocr/extract",
+                data={"provider": "fake_provider"},
+                files={"file": ("test.png", img_byte_arr, "image/png")}
+            )
+            
+            assert response.status_code == 400
+            assert response.json()["error_code"] == "unsupported_provider"
 
+def test_paddleocr_not_ready():
+    img = Image.new('RGB', (100, 100), color='white')
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='PNG')
+    img_byte_arr.seek(0)
+    
+    with patch("app.main.manager") as mock_manager:
+        mock_manager.get_state.return_value = {"state": "initializing"}
+        mock_manager.default_provider = "paddleocr"
+        
+        with TestClient(app) as client:
+            response = client.post(
+                "/ocr/extract",
+                data={"provider": "paddleocr"},
+                files={"file": ("test.png", img_byte_arr, "image/png")}
+            )
+            
+            assert response.status_code == 503
+            assert response.json()["error_code"] == "ocr_provider_not_ready"

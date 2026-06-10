@@ -22,6 +22,6 @@ Alternatively, the Docker Compose stack (managed via `task up`) will run the web
 - Web dashboard is at `http://localhost:5173`.
 - API is at `http://localhost:8080`.
 - OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
+- Single-image analysis UI uses an async polling mechanism with `POST /api/v1/labels/analyze-async` and `GET /api/v1/jobs/{job_id}` to prevent browser timeouts on slow CPU inference.
 - AI escalation is metadata-only (no actual AI provider is called in the current prototype).
 - Batch upload remains a future feature.

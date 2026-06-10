@@ -1,6 +1,6 @@
 package models
 
-import "github.com/DontSpillTheTea/barrel/apps/api/internal/ocrclient"
+import "github.com/DontSpillTheTea/barrel/apps/api/internal/ocr/providers"
 
 type ExpectedLabelFields struct {
 	BrandName                string `json:"brand_name,omitempty"`
@@ -50,7 +50,7 @@ type LabelAnalysisResult struct {
 	Fields            []FieldCheckResult     `json:"fields"`
 	AIEscalation      AIEscalation           `json:"ai_escalation"`
 	OCRText           string                 `json:"ocr_text,omitempty"`
-	OCR               *ocrclient.OCRResponse `json:"ocr,omitempty"`
+	OCR               *providers.OCRResult   `json:"ocr,omitempty"`
 	Warnings          []string               `json:"warnings"`
 }
 

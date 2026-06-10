@@ -24,9 +24,49 @@ def check(url, expected_status=200, is_post=False, payload=None):
         sys.exit(1)
 
 def main():
-    check("http://localhost:8080/health")
-    check("http://localhost:8080/health/ocr-worker")
-    
+    # 1. API Health
+    api_health_url = "http://localhost:8080/health"
+    print(f"Checking {api_health_url}...")
+    try:
+        req = urllib.request.Request(api_health_url)
+        with urllib.request.urlopen(req) as response:
+            if response.status != 200:
+                print(f"FAILED: {api_health_url} returned {response.status}")
+                sys.exit(1)
+            print(f"OK: {api_health_url}")
+    except Exception as e:
+        print(f"FAILED: Could not connect to {api_health_url}: {e}")
+        sys.exit(1)
+
+    # 2. OCR Worker Health via API
+    ocr_health_url = "http://localhost:8080/health/ocr-worker"
+    print(f"Checking {ocr_health_url}...")
+    try:
+        req = urllib.request.Request(ocr_health_url)
+        with urllib.request.urlopen(req) as response:
+            if response.status != 200:
+                print(f"FAILED: {ocr_health_url} returned {response.status}")
+                sys.exit(1)
+            print(f"OK: {ocr_health_url}")
+    except Exception as e:
+        print(f"FAILED: Could not connect to {ocr_health_url}: {e}")
+        sys.exit(1)
+
+    # 3. OCR Worker Ready via API
+    ocr_ready_url = "http://localhost:8080/health/ocr-worker-ready"
+    print(f"Checking {ocr_ready_url}...")
+    try:
+        req = urllib.request.Request(ocr_ready_url)
+        with urllib.request.urlopen(req) as response:
+            if response.status != 200:
+                print(f"FAILED: {ocr_ready_url} returned {response.status}")
+                sys.exit(1)
+            print(f"OK: {ocr_ready_url}")
+    except Exception as e:
+        print(f"FAILED: Could not connect to {ocr_ready_url}: {e}")
+        sys.exit(1)
+
+    # 4. Text Analysis
     demo_file = "demo/requests/analyze_text_good.json"
     if os.path.exists(demo_file):
         with open(demo_file, "r") as f:

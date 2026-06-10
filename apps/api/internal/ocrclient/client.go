@@ -8,7 +8,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -49,10 +51,16 @@ type Client struct {
 }
 
 func New(baseURL string) *Client {
+	timeout := 90
+	if val := os.Getenv("OCR_CLIENT_TIMEOUT_SECONDS"); val != "" {
+		if t, err := strconv.Atoi(val); err == nil {
+			timeout = t
+		}
+	}
 	return &Client{
 		baseURL: baseURL,
 		http: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: time.Duration(timeout) * time.Second,
 		},
 	}
 }
@@ -68,6 +76,19 @@ func (c *Client) Health() (*OCRResponse, error) {
 		return nil, err
 	}
 	return &out, nil
+}
+
+func (c *Client) Ready() (map[string]interface{}, error) {
+	resp, err := c.http.Get(c.baseURL + "/ready")
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var out map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *Client) Extract(filename string, file io.Reader, provider string) (*OCRResponse, error) {
