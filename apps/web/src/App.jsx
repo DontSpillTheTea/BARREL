@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
+import sampleData from './sampleData.json'
 import './App.css'
 
 function App() {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
+
+  const buildSha = import.meta.env.VITE_BUILD_SHA || 'dev'
 
   const [reviewToken, setReviewToken] = useState(localStorage.getItem('BARREL_REVIEW_TOKEN') || '')
   
@@ -19,14 +22,13 @@ function App() {
   }
 
   const [apiHealth, setApiHealth] = useState({ state: 'checking', error: null })
-  const [ocrHealth, setOcrHealth] = useState({ state: 'checking', error: null })
-  const [ocrReady, setOcrReady] = useState({ status: 'checking', details: null, error: null })
+  
+  const [history, setHistory] = useState([])
+  const [metrics, setMetrics] = useState({ total: 0, fields: {} })
+  const [batchJobs, setBatchJobs] = useState([])
 
   const checkHealth = () => {
     setApiHealth({ state: 'checking', error: null })
-    setOcrHealth({ state: 'checking', error: null })
-    setOcrReady({ status: 'checking', details: null, error: null })
-
     fetch(`${apiBaseUrl}/health`, { headers: getHeaders() })
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -34,245 +36,73 @@ function App() {
       })
       .then(data => setApiHealth({ state: 'online', error: null }))
       .catch(err => setApiHealth({ state: 'offline', error: err.message }))
-
-    fetch(`${apiBaseUrl}/health/ocr-worker`, { headers: getHeaders() })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then(data => setOcrHealth({ state: 'online', error: null }))
-      .catch(err => setOcrHealth({ state: 'offline', error: err.message }))
-
-    fetch(`${apiBaseUrl}/health/ocr-worker-ready`, { headers: getHeaders() })
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json()
-      })
-      .then(data => setOcrReady({ status: data.status, details: data, error: null }))
-      .catch(err => setOcrReady({ status: 'offline', details: null, error: err.message }))
   }
 
-  const [history, setHistory] = useState([])
   const fetchHistory = async () => {
     try {
       const res = await fetch(`${apiBaseUrl}/api/v1/reviews`, { headers: getHeaders() })
       if (res.ok) {
         const data = await res.json()
-        setHistory(Array.isArray(data) ? data : (data.reviews || []))
+        const items = Array.isArray(data) ? data : (data.reviews || [])
+        setHistory(items)
+
+        // Calculate metrics
+        let total = items.length
+        let fieldStats = {}
+        items.forEach(item => {
+          const resObj = item.result || item
+          if (resObj.FieldMatches) {
+            Object.keys(resObj.FieldMatches).forEach(field => {
+              if (!fieldStats[field]) fieldStats[field] = { attempts: 0, matches: 0 }
+              fieldStats[field].attempts++
+              if (resObj.FieldMatches[field]) fieldStats[field].matches++
+            })
+          }
+        })
+        setMetrics({ total, fields: fieldStats })
       }
     } catch (e) {
       console.error('Failed to fetch history', e)
     }
   }
 
-  useEffect(() => {
-    checkHealth()
-    fetchHistory()
-  }, [apiBaseUrl, reviewToken])
-
-  // Form State
-  const [file, setFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
-  const [beverageType, setBeverageType] = useState('distilled_spirits')
-  const [brandName, setBrandName] = useState("Stone's Throw Spirits")
-  const [classType, setClassType] = useState("Rye Whiskey")
-  const [alcoholContent, setAlcoholContent] = useState("46% Alc./Vol. (92 Proof)")
-  const [netContents, setNetContents] = useState("750 mL")
-  const [govWarning, setGovWarning] = useState(true)
-  const [ocrProvider, setOcrProvider] = useState('paddleocr')
-
-  const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState(null)
-
-  const paddleState = ocrReady.details?.providers?.find(p => p.provider === "paddleocr")?.state
-  const isPaddleWarming = paddleState === "initializing" || ocrReady.status === "warming"
-  const isPaddleReady = paddleState === "ready"
-  const paddleError = ocrReady.details?.providers?.find(p => p.provider === "paddleocr")?.last_error
-  const paddleDuration = ocrReady.details?.providers?.find(p => p.provider === "paddleocr")?.warmup_ms
-  
-  let analyzeButtonLabel = loading ? 'Analyzing...' : 'Analyze'
-  let analyzeDisabled = loading
-  
-  if (ocrProvider === "paddleocr") {
-    if (isPaddleWarming) {
-      analyzeButtonLabel = 'Waiting for accurate OCR...'
-      analyzeDisabled = true
-    } else if (!isPaddleReady) {
-      analyzeButtonLabel = 'Accurate OCR unavailable'
-      analyzeDisabled = true
-    }
-  }
-
-  const [jobId, setJobId] = useState(null)
-  const [elapsedTime, setElapsedTime] = useState(0)
-  const [decisionNotes, setDecisionNotes] = useState('')
-
-  useEffect(() => {
-    let timer
-    if (loading) {
-      timer = setInterval(() => {
-        setElapsedTime(prev => prev + 1)
-      }, 1000)
-    } else {
-      setElapsedTime(0)
-    }
-    return () => clearInterval(timer)
-  }, [loading])
-
-  const handleFileChange = (e) => {
-    const selectedFile = e.target.files[0]
-    setFile(selectedFile)
-    if (selectedFile) {
-      setImagePreview(URL.createObjectURL(selectedFile))
-    } else {
-      setImagePreview(null)
-    }
-  }
-
-  const pollJobStatus = async (pollUrl, controller) => {
-    const startTime = Date.now()
-    const maxWaitMs = 120000
-
-    while (Date.now() - startTime < maxWaitMs) {
-      if (controller.signal.aborted) throw new Error('AbortError')
-
-      const res = await fetch(`${apiBaseUrl}${pollUrl}`, { 
-        headers: getHeaders(),
-        signal: controller.signal 
-      })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      
-      const job = await res.json()
-      
-      if (job.status === 'succeeded') {
-        return job.result
-      } else if (job.status === 'failed') {
-        throw new Error(job.error || 'Job failed')
-      }
-      
-      await new Promise(resolve => setTimeout(resolve, 2000))
-    }
-    throw new Error('Timeout: Job took longer than 120 seconds')
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (!file) {
-      setError("Please select an image file.")
-      return
-    }
-
-    if (ocrProvider === "paddleocr" && !isPaddleReady) {
-      setError(`Cannot select PaddleOCR. It is currently: ${paddleState || 'unavailable'}`)
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-    setResult(null)
-    setJobId(null)
-    setDecisionNotes('')
-
-    const expectedJson = {
-      brand_name: brandName,
-      class_type: classType,
-      alcohol_content: alcoholContent,
-      net_contents: netContents,
-      government_warning_present: govWarning
-    }
-
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('beverage_type', beverageType)
-    formData.append('expected_json', JSON.stringify(expectedJson))
-    formData.append('ocr_provider', ocrProvider)
-
-    const controller = new AbortController()
-    
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/labels/analyze-async`, {
-        method: 'POST',
-        headers: getHeaders(), // Don't set Content-Type for FormData
-        body: formData,
-        signal: controller.signal
-      })
-
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || `HTTP ${res.status}`)
-      }
-      
-      setJobId(data.job_id)
-      
-      const resultData = await pollJobStatus(data.poll_url, controller)
-      setResult(resultData)
-      fetchHistory()
-    } catch (err) {
-      if (err.name === 'AbortError' || err.message === 'AbortError') {
-        setError("Request was cancelled.")
-      } else {
-        setError(err.message)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDecision = async (decision) => {
-    if (!jobId) return;
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/v1/reviews/${jobId}/decision`, {
-        method: 'POST',
-        headers: getHeaders({ 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ decision, notes: decisionNotes })
-      })
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}))
-        throw new Error(errData.error || `HTTP ${res.status}`)
-      }
-      alert(`Decision '${decision}' submitted successfully!`)
-      fetchHistory()
-    } catch (err) {
-      alert(`Failed to submit decision: ${err.message}`)
-    }
-  }
-
-  const loadHistoricalJob = (job) => {
-    setImagePreview(null) // We may not have the image for historical jobs
-    setJobId(job.job_id || job.id)
-    setResult(job.result || job)
-    setDecisionNotes('')
-  }
-
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [loginUsername, setLoginUsername] = useState('')
-  const [loginPassword, setLoginPassword] = useState('')
+  const [loginUsername, setLoginUsername] = useState('evaluator')
+  const [loginPassword, setLoginPassword] = useState('fallback-demo-password-123')
   const [loginError, setLoginError] = useState('')
 
   useEffect(() => {
+    let isMounted = true
     const checkAuth = async () => {
       if (!reviewToken) {
-        setIsAuthenticated(false)
-        setIsCheckingAuth(false)
+        if (isMounted) {
+          setIsAuthenticated(false)
+          setIsCheckingAuth(false)
+        }
         return
       }
       try {
         const res = await fetch(`${apiBaseUrl}/api/v1/auth/me`, { headers: getHeaders() })
-        if (res.ok) {
-          setIsAuthenticated(true)
-        } else {
-          setIsAuthenticated(false)
+        if (isMounted) {
+          setIsAuthenticated(res.ok)
         }
       } catch (err) {
-        setIsAuthenticated(false)
+        if (isMounted) setIsAuthenticated(false)
       } finally {
-        setIsCheckingAuth(false)
+        if (isMounted) setIsCheckingAuth(false)
       }
     }
     checkAuth()
+    return () => { isMounted = false }
   }, [apiBaseUrl, reviewToken])
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      checkHealth()
+      fetchHistory()
+    }
+  }, [isAuthenticated, apiBaseUrl, reviewToken])
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -301,312 +131,533 @@ function App() {
     setIsAuthenticated(false)
   }
 
+  // Form State
+  const [file, setFile] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [beverageType, setBeverageType] = useState('distilled_spirits')
+  const [brandName, setBrandName] = useState("Stone's Throw Spirits")
+  const [classType, setClassType] = useState("Rye Whiskey")
+  const [alcoholContent, setAlcoholContent] = useState("46% Alc./Vol. (92 Proof)")
+  const [netContents, setNetContents] = useState("750 mL")
+  const [govWarning, setGovWarning] = useState(true)
+  const [ocrProvider, setOcrProvider] = useState('azure_vision')
+
+  const [loading, setLoading] = useState(false)
+  const [secondReadLoading, setSecondReadLoading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
+  const [jobId, setJobId] = useState(null)
+  const [decisionNotes, setDecisionNotes] = useState('')
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0]
+    setFile(selectedFile)
+    if (selectedFile) {
+      setImagePreview(URL.createObjectURL(selectedFile))
+      setResult(null)
+      setError(null)
+      setJobId(null)
+      
+      const baseName = selectedFile.name.replace(/\.[^/.]+$/, "")
+      if (sampleData[baseName]) {
+        const d = sampleData[baseName]
+        setBrandName(d.brand_name || '')
+        setClassType(d.class_type || '')
+        setAlcoholContent(d.alcohol_content || '')
+        setNetContents(d.net_contents || '')
+        setGovWarning(d.government_warning_present || false)
+        setBeverageType(d.beverage_type || 'distilled_spirits')
+      }
+    } else {
+      setImagePreview(null)
+    }
+  }
+
+  const pollJobStatus = async (pollUrl, controller) => {
+    const startTime = Date.now()
+    const maxWaitMs = 90000
+
+    while (Date.now() - startTime < maxWaitMs) {
+      if (controller.signal.aborted) throw new Error('AbortError')
+
+      const res = await fetch(`${apiBaseUrl}${pollUrl}`, { 
+        headers: getHeaders() 
+      })
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `HTTP error ${res.status}`)
+      }
+      
+      const data = await res.json()
+      if (data.status === 'succeeded' || data.status === 'completed') {
+        return data.result
+      } else if (data.status === 'failed') {
+        if (data.result) return data.result
+        throw new Error(data.error || 'Job failed on server')
+      } else if (data.status === 'timeout') {
+        throw new Error('Analysis timed out on server')
+      } else if (data.status === 'unknown') {
+        throw new Error('Analysis status unknown')
+      }
+      
+      // status is queued or processing
+      await new Promise(r => setTimeout(r, 2000))
+    }
+    throw new Error('Analysis timed out on frontend (90s limit)')
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!file) {
+      setError("Please select a label image first.")
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    setJobId(null)
+    setDecisionNotes('')
+
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('beverage_type', beverageType)
+    
+    const expectedJson = {
+      brand_name: brandName,
+      class_type: classType,
+      alcohol_content: alcoholContent,
+      net_contents: netContents,
+      government_warning_present: govWarning
+    }
+    formData.append('expected_json', JSON.stringify(expectedJson))
+    formData.append('ocr_provider', ocrProvider)
+
+    const controller = new AbortController()
+    
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/labels/analyze-async`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: formData,
+        signal: controller.signal
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `HTTP ${res.status}`)
+      }
+
+      const initData = await res.json()
+      
+      if (initData.batch) {
+        alert(`Batch uploaded! Submitted ${initData.jobs?.length || 'multiple'} jobs.`)
+        setBatchJobs(initData.jobs || [])
+        fetchHistory()
+        setFile(null)
+        setImagePreview(null)
+      } else {
+        setJobId(initData.job_id)
+        await pollJobStatus(initData.poll_url, controller)
+        await loadHistoricalJob({ job_id: initData.job_id })
+        fetchHistory()
+      }
+    } catch (err) {
+      if (err.message !== 'AbortError') {
+        setError(err.message || 'An unknown error occurred')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const triggerSecondRead = async () => {
+    if (!jobId && !file) return
+    setSecondReadLoading(true)
+    setError(null)
+
+    try {
+      let res;
+      if (jobId) {
+        res = await fetch(`${apiBaseUrl}/api/v1/jobs/${jobId}/second-read`, {
+          method: 'POST',
+          headers: getHeaders()
+        })
+      } else {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('beverage_type', beverageType)
+        const expectedJson = { brand_name: brandName, class_type: classType, alcohol_content: alcoholContent, net_contents: netContents, government_warning_present: govWarning }
+        formData.append('expected_json', JSON.stringify(expectedJson))
+        
+        res = await fetch(`${apiBaseUrl}/api/v1/labels/second-read`, {
+          method: 'POST',
+          headers: getHeaders(),
+          body: formData
+        })
+      }
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `HTTP ${res.status}`)
+      }
+      await loadHistoricalJob({ job_id: jobId })
+      fetchHistory()
+    } catch (err) {
+      setError(err.message || "Failed to trigger AI second read")
+    } finally {
+      setSecondReadLoading(false)
+    }
+  }
+
+  const submitDecision = async (decision) => {
+    if (!jobId) return
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/reviews/${jobId}/decision`, {
+        method: 'POST',
+        headers: getHeaders({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ decision, notes: decisionNotes })
+      })
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.error || `HTTP ${res.status}`)
+      }
+      alert(`Decision '${decision}' submitted successfully!`)
+      fetchHistory()
+    } catch (err) {
+      alert(`Failed to submit decision: ${err.message}`)
+    }
+  }
+
+  const loadHistoricalJob = async (job) => {
+    const id = job.job_id || job.id
+    setJobId(id)
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/reviews/${id}`, { headers: getHeaders() })
+      if (!res.ok) throw new Error('Failed to load detail')
+      const detail = await res.json()
+      setResult(detail)
+      setDecisionNotes('')
+      if (detail.original_image_url) {
+        setImagePreview(`${apiBaseUrl}${detail.original_image_url}?token=${reviewToken}`)
+      } else {
+        setImagePreview(null)
+      }
+    } catch(err) {
+      alert(err.message)
+    }
+  }
+
   if (isCheckingAuth) {
-    return <div className="container"><p>Checking authentication...</p></div>
+    return <div className="login-wrapper"><div className="loading-spinner"></div></div>
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="container login-container">
-        <header>
-          <h1>BARREL</h1>
-          <h2>Evaluation Mode Login</h2>
-        </header>
-        <div className="disclaimer">
-          BARREL is configured for evaluation access only. No public account creation is available.
+      <div className="login-wrapper">
+        <div className="login-card">
+          <div className="login-header">
+            <h1>BARREL</h1>
+            <p>TTB Evaluator Portal</p>
+          </div>
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <label className="form-label">Username</label>
+              <input className="form-control" type="text" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input className="form-control" type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+            </div>
+            <button className="btn btn-primary" style={{width: '100%'}} type="submit">Secure Login</button>
+            {loginError && <div className="alert alert-error" style={{marginTop: '1rem'}}>{loginError}</div>}
+          </form>
         </div>
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label>Username:</label>
-            <input type="text" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required />
-          </div>
-          <div className="form-group">
-            <label>Password:</label>
-            <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
-          </div>
-          <button type="submit">Login</button>
-          {loginError && <p className="error-text" style={{color: 'red', marginTop: '10px'}}>{loginError}</p>}
-        </form>
       </div>
     )
   }
 
   return (
-    <div className="container">
-      <header>
-        <h1>BARREL</h1>
-        <h2>Beverage Alcohol Review & Regulatory Evidence Logger</h2>
-      </header>
-
-      <div className="disclaimer">
-        BARREL is a review assistant, not a final legal determination system.
-        <br/>
-        BARREL stores review evidence for this deployment. Uploaded labels may contain business-sensitive information.
-        <br/>
-        BARREL prioritizes accurate local OCR. Fast fallback is available for diagnostics, but it is not the default evidence path.
-      </div>
-
-      <div className="auth-header" style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', background: '#eee', padding: '10px', borderRadius: '4px'}}>
-        <span><strong>Evaluation Mode Active</strong> (Provider: {ocrProvider})</span>
-        <button onClick={handleLogout} className="btn-logout" style={{padding: '5px 10px'}}>Logout</button>
-      </div>
-
-      <div className="status-grid">
-        <div className="status-card">
-          <h3>API Status</h3>
-          <p className={`status-${apiHealth.state}`}>{apiHealth.state}</p>
-          {apiHealth.error && <small className="error-detail">{apiHealth.error}</small>}
+    <div className="app-shell">
+      <div className="app-header">
+        <div className="logo">
+          <h1>BARREL</h1>
+          <p>Beverage Alcohol Review & Regulatory Evidence Logger</p>
         </div>
-        <div className="status-card">
-          <h3>OCR Process</h3>
-          <p className={`status-${ocrHealth.state}`}>{ocrHealth.state}</p>
-          {ocrHealth.error && <small className="error-detail">{ocrHealth.error}</small>}
-        </div>
-        <div className="status-card">
-          <h3>Accurate OCR (PaddleOCR)</h3>
-          <p className={`status-${paddleState || 'checking'}`}>
-            {paddleState || 'checking'}
-            {isPaddleWarming ? ' (warming)' : ''}
-          </p>
-          {paddleDuration > 0 && <small className="success-detail">Warmup: {paddleDuration}ms</small>}
-          {paddleError && <small className="error-detail">{paddleError}</small>}
+        <div className="auth-badge">
+          <span>Evaluator Mode</span>
+          <button onClick={handleLogout} className="btn btn-outline" style={{padding: '0.25rem 0.75rem'}}>Logout</button>
         </div>
       </div>
-      
-      {ocrReady.details && (
-        <div className="provider-status">
-          <h4>Provider States</h4>
-          <ul>
-            <li><strong>Requires Ready for Analysis:</strong> {ocrReady.details.requires_ready_for_analysis ? 'Yes' : 'No'}</li>
-            {ocrReady.details.providers?.map((p, idx) => (
-              <li key={idx}><strong>{p.provider}:</strong> {p.state} <small>({p.message})</small></li>
-            ))}
-          </ul>
-        </div>
-      )}
 
-      <div className="health-controls">
-        <p>API Base URL: {apiBaseUrl}</p>
-        <button onClick={() => { checkHealth(); fetchHistory(); }}>Refresh health & history</button>
-      </div>
-
-      <hr />
-
-      <section className="history-section">
-        <h3>Review History</h3>
-        {history.length === 0 ? (
-          <p>No previous reviews found.</p>
-        ) : (
-          <ul className="history-list">
-            {history.map((job, idx) => (
-              <li key={idx} className="history-item" onClick={() => loadHistoricalJob(job)}>
-                <span><strong>Job ID:</strong> {job.job_id || job.id}</span>
-                <span><strong>File:</strong> {job.filename || (job.result && job.result.filename) || 'Unknown'}</span>
-                <span>
-                  <span className={`status-badge ${(job.overall_status || (job.result && job.result.overall_status) || 'unknown').replace(/\s+/g, '-').toLowerCase()}`}>
-                    {job.overall_status || (job.result && job.result.overall_status) || 'Unknown'}
-                  </span>
-                </span>
-                {job.decision && <span className="decision-badge">Decision: {job.decision}</span>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="analysis-section">
-        <h3>Single-Image Analysis</h3>
-        <form onSubmit={handleSubmit} className="analysis-form">
-          <div className="form-group">
-            <label>Image File:</label>
-            <input type="file" accept="image/*" onChange={handleFileChange} />
-          </div>
-
-          <div className="form-group">
-            <label>Beverage Type:</label>
-            <select value={beverageType} onChange={e => setBeverageType(e.target.value)}>
-              <option value="distilled_spirits">distilled_spirits</option>
-              <option value="wine">wine</option>
-              <option value="malt_beverages">malt_beverages</option>
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label>OCR Provider:</label>
-            <select value={ocrProvider} onChange={e => setOcrProvider(e.target.value)}>
-              <option value="paddleocr" disabled={!isPaddleReady}>Accurate local OCR (PaddleOCR)</option>
-              <option value="auto">Auto accuracy mode</option>
-              <option value="tesseract">Fast fallback OCR (Tesseract)</option>
-            </select>
-            {ocrProvider === 'tesseract' && (
-              <small className="warning-text" style={{color: 'orange'}}>
-                Fast fallback OCR may miss or corrupt label text. Results require review.
-              </small>
+      <div className="main-grid">
+        <div className="card">
+          <div className="card-title">New Analysis</div>
+          <form onSubmit={handleSubmit} className="analysis-form">
+            <div className="file-input-wrapper">
+              <div className="file-drop-area">
+                {file ? <strong>{file.name}</strong> : <span>Drag & Drop or Click to Upload Label/Zip</span>}
+              </div>
+              <input type="file" accept="image/jpeg,image/png,image/webp,application/zip,.zip" onChange={handleFileChange} />
+            </div>
+            {imagePreview && !result && (
+              <div style={{marginTop: '1rem', display: 'flex', justifyContent: 'center'}}>
+                <img src={imagePreview} alt="Selected Label" style={{maxHeight: '300px', maxWidth: '100%', borderRadius: '8px', border: '1px solid var(--border)'}} />
+              </div>
             )}
-          </div>
 
-          <div className="form-group">
-            <label>Expected Brand Name:</label>
-            <input type="text" value={brandName} onChange={e => setBrandName(e.target.value)} />
-          </div>
+            <div className="form-group">
+              <label className="form-label">OCR Engine</label>
+              <select className="form-control" value={ocrProvider} onChange={e => setOcrProvider(e.target.value)}>
+                <option value="azure_vision">Azure Vision (Default)</option>
+                <option value="ai_based">AI Based OCR (Azure OpenAI)</option>
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label>Expected Class/Type:</label>
-            <input type="text" value={classType} onChange={e => setClassType(e.target.value)} />
-          </div>
+            <div className="grid-2" style={{gap: '1rem', marginTop: '1rem'}}>
+              <div className="form-group">
+                <label className="form-label">Beverage Type</label>
+                <select className="form-control" value={beverageType} onChange={e => setBeverageType(e.target.value)}>
+                  <option value="distilled_spirits">Distilled Spirits</option>
+                  <option value="wine">Wine</option>
+                  <option value="malt_beverages">Malt Beverages</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Brand Name</label>
+                <input className="form-control" type="text" value={brandName} onChange={e => setBrandName(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Class/Type</label>
+                <input className="form-control" type="text" value={classType} onChange={e => setClassType(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Alcohol Content</label>
+                <input className="form-control" type="text" value={alcoholContent} onChange={e => setAlcoholContent(e.target.value)} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Net Contents</label>
+                <input className="form-control" type="text" value={netContents} onChange={e => setNetContents(e.target.value)} />
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Expected Alcohol Content:</label>
-            <input type="text" value={alcoholContent} onChange={e => setAlcoholContent(e.target.value)} />
-          </div>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? <span className="loading-spinner" style={{width: '1rem', height: '1rem', borderWidth: '2px'}}></span> : 'Analyze Label'}
+            </button>
+          </form>
+          {error && <div className="alert alert-error">{error}</div>}
+        </div>
 
-          <div className="form-group">
-            <label>Expected Net Contents:</label>
-            <input type="text" value={netContents} onChange={e => setNetContents(e.target.value)} />
-          </div>
-
-          <div className="form-group checkbox-group">
-            <label>
-              <input type="checkbox" checked={govWarning} onChange={e => setGovWarning(e.target.checked)} />
-              Government Warning Expected
-            </label>
-          </div>
-
-          <button type="submit" disabled={analyzeDisabled}>{analyzeButtonLabel}</button>
-          <div className="form-info">
-            <small>Accurate OCR can take longer on local CPU. BARREL processes it as a background job so the browser does not time out.</small>
-          </div>
-        </form>
-
-        {error && <div className="error-box">{error}</div>}
-        {loading && (
-          <div className="loading-box">
-            <p>Processing accurate OCR...</p>
-            {jobId && <small>Job ID: {jobId}</small>}
-            <p>Elapsed Time: {elapsedTime} seconds</p>
-          </div>
-        )}
-
-        {result && (
+        {result ? (
           <div className="review-layout">
             <div className="review-left">
-              <h4>Original Image</h4>
-              {imagePreview ? (
-                <img src={imagePreview} alt="Original Label" className="img-preview" />
-              ) : (
-                <div className="no-image">No image preview available</div>
-              )}
-
-              {jobId && (
-                <div className="decision-controls">
-                  <h4>Reviewer Decision</h4>
-                  <textarea 
-                    placeholder="Enter decision notes here..." 
-                    value={decisionNotes} 
-                    onChange={e => setDecisionNotes(e.target.value)}
-                  />
-                  <div className="decision-buttons">
-                    <button type="button" onClick={() => handleDecision('approved')} className="btn-approve">Approve</button>
-                    <button type="button" onClick={() => handleDecision('rejected')} className="btn-reject">Reject</button>
-                    <button type="button" onClick={() => handleDecision('needs_more_info')} className="btn-more-info">Needs Info</button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="review-right">
-              <h4>Overall Summary</h4>
-              <ul>
-                <li><strong>Filename:</strong> {result.filename}</li>
-                <li><strong>Beverage Type:</strong> {result.beverage_type}</li>
-                <li><strong>Status:</strong> <span className={`status-badge ${result.overall_status?.replace(/\s+/g, '-').toLowerCase()}`}>{result.overall_status}</span></li>
-                <li><strong>Confidence:</strong> {result.overall_confidence}</li>
-              </ul>
-              {result.warnings?.length > 0 && (
-                <div className="warning-box">
-                  <strong>Warnings:</strong>
-                  <ul>
-                    {result.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                  </ul>
-                </div>
-              )}
-
-              <h4>Field Checks</h4>
-              <div className="table-responsive">
-                <table className="results-table">
-                  <thead>
-                    <tr>
-                      <th>Field</th>
-                      <th>Expected</th>
-                      <th>Found</th>
-                      <th>Status</th>
-                      <th>Confidence</th>
-                      <th>Explanation</th>
-                      <th>Rule Citation</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.fields?.map((f, i) => (
-                      <tr key={i}>
-                        <td>{f.field}</td>
-                        <td>{f.expected}</td>
-                        <td>{f.found}</td>
-                        <td><span className={`status-badge ${f.status?.replace(/\s+/g, '-').toLowerCase()}`}>{f.status}</span></td>
-                        <td>{f.confidence}</td>
-                        <td>{f.explanation}</td>
-                        <td>
-                          {f.rule && f.rule.citation ? (
-                            <a href={f.rule.source_url} target="_blank" rel="noreferrer">{f.rule.citation}</a>
-                          ) : 'N/A'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <h3 className="card-title">Evidence</h3>
+              <div style={{marginBottom: '1rem', fontSize: '0.85rem'}}>
+                <div><strong>Filename:</strong> {result.summary?.filename || result.result?.filename}</div>
+                <div><strong>Job ID:</strong> {result.summary?.job_id}</div>
+                {result.summary?.batch_id && <div><strong>Batch ID:</strong> {result.summary?.batch_id}</div>}
+                <div><strong>Provider:</strong> {result.summary?.ocr_provider}</div>
+                <div><strong>Submitted:</strong> {result.summary?.submitted_at ? new Date(result.summary.submitted_at).toLocaleString() : '-'}</div>
               </div>
 
-              <h4>OCR Evidence</h4>
-              {result.ocr?.status === "error" ? (
-                <div className="error-box">
-                  <strong>Error: </strong> {result.ocr.message} ({result.ocr.error_code})
+              {imagePreview ? (
+                <div className="img-preview-container">
+                  <img src={imagePreview} alt="Label Preview" />
                 </div>
               ) : (
-                <ul>
-                  <li><strong>OCR Engine (Requested):</strong> {result.ocr?.ocr_engine}</li>
-                  <li><strong>Selected Provider:</strong> {result.ocr?.selected_provider}</li>
-                  <li><strong>Selection Reason:</strong> {result.ocr?.selection_reason}</li>
-                  <li><strong>Mean Confidence:</strong> {result.ocr?.mean_confidence}</li>
-                  <li><strong>Provider Results:</strong> 
-                    <ul>
-                      {result.ocr?.provider_results?.map((pr, idx) => (
-                        <li key={idx}>{pr.provider}: conf {pr.mean_confidence}, len {pr.text_length}</li>
-                      ))}
-                    </ul>
-                  </li>
-                  <li><strong>Image:</strong> {result.ocr?.image_quality?.width}x{result.ocr?.image_quality?.height}</li>
-                  <li><strong>Contrast Score:</strong> {result.ocr?.image_quality?.contrast_score}</li>
-                  <li><strong>Blur Score:</strong> {result.ocr?.image_quality?.blur_score}</li>
-                </ul>
+                <div className="no-image">No image available</div>
               )}
-              {result.ocr?.text && (
-                <details>
-                  <summary>View Raw OCR Text</summary>
-                  <pre>{result.ocr.text}</pre>
-                </details>
-              )}
+              
+              <div style={{marginTop: '1.5rem'}}>
+                <h4>Raw OCR Text</h4>
+                <div style={{maxHeight: '150px', overflowY: 'auto', background: 'rgba(255,255,255,0.05)', padding: '0.5rem', borderRadius: '4px', fontSize: '0.8rem', whiteSpace: 'pre-wrap'}}>
+                  {result.raw_ocr_text || result.result?.ocr_text || 'No raw text available.'}
+                </div>
+              </div>
 
-              <h4>AI Escalation Metadata</h4>
-              <p><em>BARREL runs local OCR first. AI escalation is metadata-only and disabled unless explicitly configured later.</em></p>
-              <ul>
-                <li><strong>Eligible:</strong> {result.ai_escalation?.eligible ? 'Yes' : 'No'}</li>
-                <li><strong>Used:</strong> {result.ai_escalation?.used ? 'Yes' : 'No'}</li>
-                <li><strong>Provider:</strong> {result.ai_escalation?.provider}</li>
-                <li><strong>Reason:</strong> {result.ai_escalation?.reason}</li>
-              </ul>
+              <div style={{marginTop: '1.5rem'}}>
+                <h4>Decision Panel</h4>
+                <textarea 
+                  className="form-control" 
+                  placeholder="Review notes..." 
+                  value={decisionNotes} 
+                  onChange={e => setDecisionNotes(e.target.value)}
+                  style={{minHeight: '80px', marginBottom: '1rem'}}
+                />
+                <div className="grid-3" style={{gap: '0.5rem'}}>
+                  <button className="btn btn-approve" onClick={() => submitDecision('approved')}>Approve</button>
+                  <button className="btn btn-reject" onClick={() => submitDecision('rejected')}>Reject</button>
+                  <button className="btn btn-more-info" onClick={() => submitDecision('needs_more_info')}>RFI</button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="review-right">
+              <div className="card">
+                <div className="card-title">
+                  Deterministic Extraction
+                  <span className={`badge ${result?.result?.overall_status === 'Pass' ? 'badge-success' : 'badge-warning'} status-badge`} style={{ marginLeft: '1rem' }}>
+                    {result?.result?.overall_status}
+                  </span>
+                  <span className={`badge ${result?.result?.overall_status === 'Pass' ? 'badge-success' : 'badge-warning'}`}>
+                    {result.result?.overall_confidence || 0}% Confidence
+                  </span>
+                </div>
+                <div style={{marginBottom: '1rem'}}>
+                  <strong style={{fontSize: '0.85rem'}}>Expected vs Extracted:</strong>
+                  <div style={{display: 'flex', gap: '1rem', fontSize: '0.8rem', marginTop: '0.5rem'}}>
+                    <pre style={{flex: 1, background: 'rgba(0,0,0,0.2)', padding: '0.5rem'}}>{JSON.stringify(result.result?.expected_fields, null, 2)}</pre>
+                    <pre style={{flex: 1, background: 'rgba(0,0,0,0.2)', padding: '0.5rem'}}>{JSON.stringify(result.result?.extracted_fields, null, 2)}</pre>
+                  </div>
+                </div>
+
+                <ul className="field-list">
+                  {(result.result?.fields || []).map((field, i) => (
+                    <li className="field-item" key={i}>
+                      <span className="field-name">{field.field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                      <span className={`badge ${field.status === 'Pass' ? 'badge-success' : 'badge-error'}`}>
+                        {field.status}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+
+                {result.result?.warnings && result.result.warnings.length > 0 && (
+                  <div style={{marginTop: '1.5rem'}}>
+                    <h4>Regulatory Warnings</h4>
+                    {result.result.warnings.map((w, i) => (
+                      <div className="alert alert-error" key={i}>
+                        {w}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {result.result?.ai_escalation && (
+                <div className="card ai-card">
+                  <div className="card-title">
+                    AI Second Read
+                    <span className="badge badge-info">Azure OpenAI</span>
+                  </div>
+                  {result.result.ai_escalation.used ? (
+                    <div>
+                      <p>The AI performed a deep contextual read of this label.</p>
+                    {result.result.ai_escalation.findings && result.result.ai_escalation.findings.length > 0 && (
+                      <ul>
+                        {result.result.ai_escalation.findings.map((f, i) => <li key={i}>{f.message || f}</li>)}
+                      </ul>
+                    )}
+                    <div>
+                      <strong>Candidate Evidence:</strong>
+                      <pre style={{background: 'rgba(255,255,255,0.5)', padding: '1rem', borderRadius: '4px', marginTop: '0.5rem'}}>
+                        {JSON.stringify(result.result.ai_escalation.candidates, null, 2)}
+                      </pre>
+                    </div>
+                    </div>
+                  ) : (
+                    <div>
+                    <p>AI was not invoked. Reason: {result.result.ai_escalation.reason || result.result.ai_escalation.error}</p>
+                    {result.result.ai_escalation.eligible && (
+                      <button className="btn btn-primary" onClick={triggerSecondRead} disabled={secondReadLoading}>
+                        {secondReadLoading ? 'Running AI...' : 'Run AI Second Read Now'}
+                      </button>
+                    )}
+                  </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
+        ) : (
+          <div className="card" style={{display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-light)', minHeight: '300px'}}>
+            Select a label to review its details
+          </div>
         )}
-      </section>
+
+        <div className="card review-history-section">
+          <div className="card-title">Review History</div>
+          {batchJobs.length > 0 && (
+            <div style={{marginBottom: '2rem'}}>
+              <h4 style={{marginTop: 0, marginBottom: '0.5rem', color: 'var(--accent)'}}>Batch Queue</h4>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Filename</th>
+                    <th>Job ID</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {batchJobs.map((b, i) => (
+                    <tr key={i}>
+                      <td>{b.filename}</td>
+                      <td><span style={{fontFamily: 'monospace', fontSize: '0.8rem'}}>{b.job_id}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          
+          <div className="history-table-shell">
+            <table className="data-table history-table">
+              <thead>
+                <tr>
+                  <th>Submitted</th>
+                  <th>Filename</th>
+                  <th>Provider</th>
+                  <th>Job status</th>
+                  <th>Review decision</th>
+                  <th>Overall status</th>
+                  <th>Confidence</th>
+                  <th>Fields passed</th>
+                  <th>Batch ID</th>
+                  <th>Job ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.length === 0 && (
+                  <tr><td colSpan="10" style={{textAlign: 'center', padding: '1rem'}}>No recent reviews found.</td></tr>
+                )}
+                {history.map((item, idx) => {
+                  const isPass = item.overall_status === 'Pass'
+                  const dateStr = item.submitted_at
+                  return (
+                    <tr key={idx} className="clickable-row" onClick={() => loadHistoricalJob(item)}>
+                      <td>{dateStr ? new Date(dateStr).toLocaleString() : '-'}</td>
+                      <td style={{fontWeight: '500'}}>{item.filename}</td>
+                      <td>{item.ocr_provider}</td>
+                      <td>{item.overall_status === 'Needs Review' ? 'complete' : 'complete'}</td>
+                      <td>
+                        {item.reviewer_decision ? (
+                          <span className="badge badge-info">{item.reviewer_decision}</span>
+                        ) : (
+                          <span style={{color: 'var(--text-light)'}}>unreviewed</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${isPass ? 'badge-success' : 'badge-warning'}`}>
+                          {item.overall_status || 'Unknown'}
+                        </span>
+                      </td>
+                      <td>{item.overall_confidence || 0}%</td>
+                      <td>{item.field_pass_count} / {item.field_total_count}</td>
+                      <td><span style={{fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-light)'}}>{item.batch_id || '-'}</span></td>
+                      <td><span style={{fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--text-light)'}}>{item.job_id}</span></td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <footer style={{ marginTop: '3rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-light)', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+        Build: {buildSha}
+      </footer>
     </div>
   )
 }

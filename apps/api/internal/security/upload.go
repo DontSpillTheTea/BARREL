@@ -17,5 +17,5 @@ func ValidateUpload(r *http.Request, maxUploadMB int64) error {
 
 func IsAllowedExtension(filename string) bool {
 	ext := strings.ToLower(filepath.Ext(filename))
-	return ext == ".png" || ext == ".jpg" || ext == ".jpeg"
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".zip"
 }

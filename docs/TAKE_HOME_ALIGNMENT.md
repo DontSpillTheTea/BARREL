@@ -1,24 +1,53 @@
 # Take-home Alignment
 
+This document explains how BARREL aligns with the take-home requirements in its current AI-native form.
 
-**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
+**Note:** `task` is the supported daily command interface. `make setup` is for bootstrap convenience.
 
+## Why this implementation fits the assignment
 
-This document explains how BARREL aligns with the take-home requirements.
+- It is a practical deployed review tool, not a speculative platform build.
+- It uses AI-native image parsing where layout understanding matters.
+- It keeps deterministic checks and an evidence trail instead of pretending the model is the compliance authority.
+- It centers the human review workflow: inspect, compare, decide, and log.
+- It uses lightweight object/blob storage instead of overbuilding around a database too early.
 
-## Architecture Choices
-- **Why Docker Compose helps reviewers**: It provides a repeatable setup across Ubuntu and Windows without complex local dependency management. (The stack is fully verified and working).
-- **Why Go + Python is an appropriate technical choice**: Go is excellent for API routing, JSON contracts, and rule evaluation concurrency, while Python excels at image processing and OCR.
-- **Why local-first meets network/security constraints**: It honors strict outbound traffic limits and avoids sending sensitive labels to third-party AI endpoints.
-- **Why confidence scoring and breadcrumbs show attention to requirements**: Reviewers need to know *why* something flagged, and what rule it violated, rather than a black-box "fail".
-- **Why extraction is deterministic**: OCR remains evidence extraction, not the compliance authority. Separating OCR from regex/fuzzy text extraction in Go allows reliable, testable compliance validation.
+## Product approach
 
-## Current Status & Endpoints
+BARREL accepts one label image or a zip file of images, parses each image through a hosted image-capable model, runs deterministic validation, stores lightweight evidence objects, and presents the result in a reviewer-facing history/detail interface.
 
-- Local CORS is enabled for the Vite dev dashboard to communicate with the API.
-- Web dashboard is at `http://localhost:5173`.
-- API is at `http://localhost:8080`.
-- OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
-- AI escalation is metadata-only (no actual AI provider is called in the current prototype).
-- Batch upload remains a future feature.
+This is aligned with the core product statement:
+
+```text
+BARREL is a review assistant, not a final legal determination system.
+```
+
+## Architecture choices
+
+- **Go API**: a good fit for HTTP handling, async job orchestration, structured JSON contracts, and deterministic validation.
+- **Hosted AI parser**: appropriate for image-native field extraction without standing up managed compute.
+- **Azure-first deployment**: consistent with the take-home environment and the current product direction.
+- **Object/blob review storage**: sufficient for review evidence without prematurely introducing Postgres.
+
+## Verification approach
+
+- local verification before Azure smoke
+- API and smoke tests before any success claim
+- AI provider endpoint proof before BARREL deployment claims
+- reviewer-visible history/detail behavior treated as part of the product, not an optional extra
+
+## Evidence and reviewability
+
+BARREL keeps the system reviewable by:
+
+- surfacing parsed fields
+- surfacing confidence and evidence
+- applying deterministic checks
+- retaining lightweight evidence artifacts
+- letting reviewers reopen prior submissions from Review History
+
+## What this is not
+
+- not a final legal determination engine
+- not a GPU or managed-ML infrastructure exercise
+- not a database-heavy compliance platform unless later scale needs prove that necessary

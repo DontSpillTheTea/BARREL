@@ -1,40 +1,49 @@
 # Roadmap
 
-**Status:** Phases 1–3 complete.
+**Status:** Azure-hosted BARREL is live as an AI-native review assistant prototype, with provider verification and quality hardening still in progress.
 
+**Note:** `task` is the supported daily command interface. `make setup` exists for initial bootstrap only.
 
+## Completed and current
 
-**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
+### Platform and product foundation
 
+- Azure-hosted web and API application path established
+- AI-native parser plumbing integrated into the async label analysis flow
+- lightweight object/blob review storage established
+- Review History and detail viewer implemented
+- single-image analysis implemented through async job submission
+- zip batch submission and per-image job processing implemented
+- evaluator login flow integrated
 
-## Phase 0: Scaffold
-1. sample fixture matrix (Completed)
-2. Taskfile + Docker Compose scaffold (Completed & Verified)
-3. Go API health endpoint (Completed)
-4. Python OCR worker health endpoint (Completed)
+### Current architecture direction
 
-## Phase 1: Core OCR Pipeline
-5. API-to-worker OCR call (Completed & Verified)
-6. rule loading (Completed & Verified)
-7. deterministic extraction (Completed & Verified)
+- `ai_native` is the default parser
+- `azure_vision_ocr` is optional debug/baseline evidence only
+- deterministic BARREL checks run on top of structured AI output
+- review evidence is stored in object/blob-style storage, not Postgres
 
-## Phase 2: Analysis & UI (Completed)
-8. single-image analysis (Completed - Async)
-9. frontend upload UI (Completed)
-10. Reviewer History and Storage (Completed)
+## In progress
 
-## Phase 3: Azure Cloud Deployment (In Progress)
-11. Azure Provider integration (Vision API) (Completed)
-12. Azure Infrastructure (OpenTofu + Terragrunt / Container Apps) (Scaffolded)
-13. Security tokens (Completed)
-14. Batch/zip analysis (Future)
+- robust AI endpoint quota and provider verification
+- local-first smoke coverage for AI-native flows before Azure deployment claims
+- batch queue UI hardening and review ergonomics
+- field confidence and scoring quality tuning
+- clearer provider error surfacing when Azure OpenAI quota or region policy blocks deployment
 
-## Current Status & Endpoints
+## Future work
 
-- Web dashboard is at `http://localhost:5173`.
-- API is at `http://localhost:8080`.
-- OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze-async`.
-- Reviewer workspace with history and decision states is integrated.
-- AI escalation is metadata-only (no actual AI provider is called in the current prototype).
-- Batch upload remains a future feature.
+- custom domain and polished deployment ergonomics
+- richer expected-vs-observed diffing in the detail view
+- reviewer export and reporting flows
+- broader and richer regulatory rule catalog
+- stronger confidence calibration and evidence rendering
+- optional database adoption only if object/blob storage becomes insufficient for history/query needs
+
+## Verification policy
+
+- use local tests first
+- use Azure smoke second
+- do not run heavy Azure validation by default
+- do not claim success without smoke tests
+- do not keep region-hopping Azure OpenAI without proving quota and policy facts first

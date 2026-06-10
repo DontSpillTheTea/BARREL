@@ -30,3 +30,5 @@ Thumbs.db
 uploads/
 output/
 data/
+.terragrunt-cache/
+test_vision.py

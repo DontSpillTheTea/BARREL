@@ -1,78 +1,129 @@
-# Architecture
+# BARREL Architecture
 
+## Product shape
 
-**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
+BARREL is an AI-native beverage alcohol label review assistant. It accepts image and zip uploads, parses each label through a hosted image-capable model, applies deterministic checks, stores lightweight review evidence, and exposes a review history/detail viewer for human decision-making.
 
+**Required product statement:** BARREL is a review assistant, not a final legal determination system.
 
-## Topology
-BARREL follows a decoupled architecture using Docker Compose:
-- **web**: React/Vite frontend
-- **api**: Go API responsible for orchestration, rule loading, text extraction validation, and API endpoints
-- **ocr-worker**: Python worker responsible for OCR and image-processing
+## High-level topology
 
-## Target Architecture
+```text
+Browser
+→ BARREL web UI
+→ BARREL Go API
+→ AI-native image parser via hosted API
+→ deterministic BARREL checks
+→ object/blob storage
+→ review history/detail viewer
+```
 
-1. **Frontend (React/Vite)**
-   - Browser-based review interface
-   - Submits images via multipart form POST (`/api/v1/labels/analyze-async`)
-   - Polls async job endpoints (`/api/v1/jobs/{job_id}`) so UI doesn't timeout on slow CPU inference
+## Analysis flow
 
-2. **Backend API (Go)**
-   - Upload handler, validation, routing
-   - Async Job manager (in-memory, no DB required for POC)
-   - Rule execution engine (reads local `.yaml` config)
-   - Communicates to OCR worker over local HTTP
+### Single image
 
-3. **OCR Worker (Python)**
-   - `FastAPI` service running `paddleocr` or `tesseract`
-   - Image pre-processing (downscale, grayscale)
-   - Primary data extraction point
-   - Pre-warms deep learning models in the background on startup
+```text
+upload image
+→ create async job
+→ call ai_native with image + prompt/schema
+→ receive structured candidate fields
+→ run deterministic checks and expected-vs-observed scoring
+→ persist evidence objects
+→ show result detail and history entry
+```
 
-4. **External/AI (Future)**
-   - Only used as fallback when OCR confidence is low
-   - Floci-AZ / Azure OpenAI (Strictly metadata-only right now)
+### Zip batch
 
-## Responsibilities
-- **Go API**: Handles uploads (`POST /api/v1/labels/analyze`), coordinates with the OCR worker, evaluates rules deterministically, performs regex extraction, and produces rule breadcrumbs. It exposes a text-only interface (`POST /api/v1/labels/analyze-text`) to decouple compliance testing from OCR processing.
-### Python OCR Worker (`apps/ocr-worker`)
-A FastAPI service that handles the raw image processing.
-- **Accuracy-First**: It uses PaddleOCR as the default, deep OCR provider. This is initialized and warmed up on container startup in a background thread, ensuring readiness requests return immediately.
-- **Fallback**: Tesseract is kept as a fast fallback or diagnostic provider. Fast fallback OCR is not intended as the default evidence path.
-- Returns plain extracted text, bounding boxes, mean confidence, and provider metadata.
-- Pre-processes images using PIL and OpenCV.
-- Evaluates raw image quality before extraction.
-- **Top-level rules catalog**: Rules live in `rules/ttb/` and are loaded by the Go API on startup.
+```text
+upload zip
+→ extract image entries
+→ create one async job per image
+→ process each image through ai_native
+→ persist evidence objects per job
+→ show queue/history rows
+→ allow row click to restore detail for each completed job
+```
 
-## Runtime
-- **Docker Compose**: The preferred demo/reviewer runtime for repeatability. (Verified & Working)
-- **go-task**: The primary cross-platform command runner.
-- **Local-first**: The system defaults to local-first / no-outbound-AI architecture to meet strict outbound network constraints.
+## Primary services
 
-## Endpoints
-- Web health dashboard: http://localhost:5173
-- API: http://localhost:8080
-- OCR worker: internal only
+### Web UI
 
-## Storage & Review
-- **Storage Abstraction**: The Go API includes a `storage` package that can write review history locally (`data/reviews`) or to Azure Blob Storage.
-- **Review History**: Stores the original uploaded label, expected JSON, extracted OCR data, confidence scoring, and human reviewer decisions.
-- **Security**: The API uses a token-based middleware (`BARREL_REVIEW_TOKEN`) to secure endpoints.
+- React/Vite evaluator interface
+- login-gated
+- upload form for single image and zip batch submissions
+- result detail panel with original image, parsed fields, evidence, confidence, and deterministic checks
+- full-width Review History table with selectable rows
 
-## Azure Target Architecture (Phase 10+)
-To improve speed and quality while remaining cost-effective, BARREL has pivoted to support Azure deployment:
-- **Infrastructure**: OpenTofu + Terragrunt handles provisioning (`infra/opentofu/dev`).
-- **Compute**: Azure Container Apps run the Go API and React Web frontend.
-- **OCR**: Azure Computer Vision is integrated as the primary, high-speed, high-quality OCR provider via the Go API `ocr/providers` package.
-- **Local Fallback**: PaddleOCR remains as the accurate offline/local fallback.
-- **State**: Review histories and images are stored in Azure Blob Storage.
+### Go API
 
-## Current Status & Endpoints
+- receives uploads
+- creates async jobs
+- submits images to the configured AI provider
+- runs deterministic validation and expected-vs-observed matching
+- persists image/result/review metadata
+- serves history and detail endpoints
 
-- Local CORS is enabled for the Vite dev dashboard to communicate with the API.
-- Web dashboard is at `http://localhost:5173`.
-- API is at `http://localhost:8080`.
-- OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze-async` to avoid browser timeouts.
-- Reviewer workspace UI is available, including history and decision controls.
-- Azure deployment tasks (`azure:infra:apply`, `azure:deploy`) are integrated via go-task.
+### AI parser
+
+- Primary provider ID: `ai_native`
+- Hosted API-based image parser using image input plus prompt/schema
+- Preferred implementation: Azure OpenAI / Azure AI Foundry hosted API if quota is available
+- Temporary fallback: direct OpenAI API using the same provider contract if Azure OpenAI is blocked by subscription quota or region policy
+
+### Optional debug provider
+
+- Provider ID: `azure_vision_ocr`
+- Purpose: debug/baseline evidence only
+- Not the primary product path
+
+## Deterministic layer
+
+BARREL does not treat the model output as a final compliance decision.
+
+Deterministic logic is responsible for:
+
+- normalization of parsed fields
+- expected-vs-observed comparisons
+- alcohol content / proof checks
+- net contents checks
+- government warning validation
+- match scoring and advisory status assignment
+- confidence and evidence presentation
+
+## Storage model
+
+BARREL prefers object/blob storage over Postgres for review evidence.
+
+Azure implementation:
+
+- Azure Blob Storage for images and review artifacts
+- lightweight metadata persisted alongside result artifacts
+
+Recommended storage layout:
+
+```text
+jobs/{job_id}/image.<ext>
+jobs/{job_id}/ai_raw.json
+jobs/{job_id}/result.json
+jobs/{job_id}/decision.json
+```
+
+If “S3” appears in generic planning language, it means the object-storage pattern. The Azure implementation uses Azure Blob Storage.
+
+## History and detail viewer
+
+Review History is a first-class reviewer feature:
+
+- each processed submission appears row-by-row
+- rows show submission and result metadata
+- selecting a row restores the original image
+- selecting a row restores parsed fields, confidence, evidence, deterministic checks, and review decision state
+
+## Infrastructure direction
+
+- Azure Container Apps for web and API hosting
+- Azure Blob Storage for review evidence
+- Azure-managed secrets for provider credentials and demo access
+- OpenTofu + Terragrunt for infrastructure management
+
+The architecture should stay simple: hosted API-based parsing, deterministic validation, object/blob storage, and a reviewer-focused UI.

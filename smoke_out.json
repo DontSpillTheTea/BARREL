@@ -1,0 +1,1754 @@
+Checking web URL: https://barrel-web.gentlesand-de48fa41.eastus.azurecontainerapps.io
+Checking API health: https://barrel-api.gentlesand-de48fa41.eastus.azurecontainerapps.io/health
+Testing login...
+Submitting analyze-async job...
+Job ID: 4478ca74-935a-4237-8fed-c6fea7bdc70b, polling...
+Job succeeded.
+Result JSON: {
+  "filename": "good_01_distilled_spirits_clean_front.png",
+  "requested_provider": "azure_vision",
+  "beverage_type": "distilled_spirits",
+  "overall_status": "Needs Review",
+  "overall_confidence": 95,
+  "expected_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 mL"
+  },
+  "extracted_fields": {
+    "brand_name": "OLD TOM DISTILLERY",
+    "class_type": "Kentucky Straight Bourbon Whiskey",
+    "alcohol_content": "45% Alc./Vol. (90 Proof)",
+    "net_contents": "750 ml",
+    "government_warning_found": true
+  },
+  "fields": [
+    {
+      "field": "Brand Name",
+      "expected": "OLD TOM DISTILLERY",
+      "found": "OLD TOM DISTILLERY",
+      "status": "Pass",
+      "confidence": 95,
+      "explanation": "Checked via fuzzy normalized substring match.",
+      "rule": {
+        "id": "spirits_brand_name",
+        "citation": "27 CFR Part 5 Section 5.63",
+        "source_url": "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+      }
+    },
+    {
+      "field": "Class/Type",
+      "expected": "Kentucky Straight Bourbon Whiskey",
+      "found": "Kentucky Straight Bourbon Whiskey",
+      "status": "Pass",
+      "confidence": 95,
+      "explanation": "Checked via fuzzy normalized substring match.",
+      "rule": {
+        "id": "spirits_class_type",
+        "citation": "27 CFR Part 5 Section 5.141",
+        "source_url": "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+      }
+    },
+    {
+      "field": "Alcohol Content",
+      "expected": "45% Alc./Vol. (90 Proof)",
+      "found": "45% Alc./Vol. (90 Proof)",
+      "status": "Pass",
+      "confidence": 95,
+      "explanation": "Extracted using regex patterns for ABV and Proof.",
+      "rule": {
+        "id": "spirits_alcohol_content",
+        "citation": "27 CFR Part 5 Section 5.65",
+        "source_url": "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+      }
+    },
+    {
+      "field": "Net Contents",
+      "expected": "750 mL",
+      "found": "750 ml",
+      "status": "Pass",
+      "confidence": 95,
+      "explanation": "Extracted using regex patterns for volume.",
+      "rule": {
+        "id": "spirits_net_contents",
+        "citation": "27 CFR Part 5 Section 5.73",
+        "source_url": "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5"
+      }
+    },
+    {
+      "field": "Government Warning",
+      "expected": "Not required",
+      "found": "Present",
+      "status": "Needs Review",
+      "confidence": 75,
+      "explanation": "Checked for exact uppercase heading and presence.",
+      "rule": {
+        "id": "health_warning_statement",
+        "citation": "27 CFR Part 16 Section 16.21",
+        "source_url": "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-16"
+      }
+    }
+  ],
+  "ai_escalation": {
+    "eligible": false,
+    "used": false,
+    "provider": "",
+    "reason": ""
+  },
+  "ai_second_read": {
+    "eligible": true,
+    "used": false,
+    "provider": "none",
+    "reason": "Overall status is not Pass.",
+    "candidates": {}
+  },
+  "ocr_text": "OLD TOM DISTILLERY\nKentucky Straight Bourbon Whiskey\n45% Alc./Vol. (90 Proof)\n750 ml\nBottled by Old Tom Distillery, Louisville, Kentucky\nGOVERNMENT WARNING: (1) According to the Surgeon General,\nwomen should not drink alcoholic beverages during pregnancy\nbecause of the risk of birth defects. (2) Consumption of alcoholic\nbeverages impairs your ability to drive a car or operate machinery,\nand may cause health problems.",
+  "ocr": {
+    "status": "ok",
+    "provider": "azure_vision",
+    "selected_provider": "azure_vision",
+    "text": "OLD TOM DISTILLERY\nKentucky Straight Bourbon Whiskey\n45% Alc./Vol. (90 Proof)\n750 ml\nBottled by Old Tom Distillery, Louisville, Kentucky\nGOVERNMENT WARNING: (1) According to the Surgeon General,\nwomen should not drink alcoholic beverages during pregnancy\nbecause of the risk of birth defects. (2) Consumption of alcoholic\nbeverages impairs your ability to drive a car or operate machinery,\nand may cause health problems.",
+    "mean_confidence": 99.43650793650795,
+    "raw": {
+      "metadata": {
+        "height": 1024,
+        "width": 1024
+      },
+      "modelVersion": "2023-10-01",
+      "readResult": {
+        "blocks": [
+          {
+            "lines": [
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 176,
+                    "y": 265
+                  },
+                  {
+                    "x": 856,
+                    "y": 264
+                  },
+                  {
+                    "x": 856,
+                    "y": 322
+                  },
+                  {
+                    "x": 176,
+                    "y": 323
+                  }
+                ],
+                "text": "OLD TOM DISTILLERY",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 179,
+                        "y": 265
+                      },
+                      {
+                        "x": 290,
+                        "y": 265
+                      },
+                      {
+                        "x": 288,
+                        "y": 324
+                      },
+                      {
+                        "x": 177,
+                        "y": 324
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "OLD"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 330,
+                        "y": 265
+                      },
+                      {
+                        "x": 440,
+                        "y": 265
+                      },
+                      {
+                        "x": 439,
+                        "y": 324
+                      },
+                      {
+                        "x": 328,
+                        "y": 324
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "TOM"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 488,
+                        "y": 265
+                      },
+                      {
+                        "x": 849,
+                        "y": 265
+                      },
+                      {
+                        "x": 849,
+                        "y": 323
+                      },
+                      {
+                        "x": 486,
+                        "y": 324
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "DISTILLERY"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 141,
+                    "y": 343
+                  },
+                  {
+                    "x": 889,
+                    "y": 343
+                  },
+                  {
+                    "x": 889,
+                    "y": 397
+                  },
+                  {
+                    "x": 141,
+                    "y": 397
+                  }
+                ],
+                "text": "Kentucky Straight Bourbon Whiskey",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 142,
+                        "y": 344
+                      },
+                      {
+                        "x": 336,
+                        "y": 344
+                      },
+                      {
+                        "x": 335,
+                        "y": 397
+                      },
+                      {
+                        "x": 141,
+                        "y": 398
+                      }
+                    ],
+                    "confidence": 0.995,
+                    "text": "Kentucky"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 347,
+                        "y": 344
+                      },
+                      {
+                        "x": 513,
+                        "y": 344
+                      },
+                      {
+                        "x": 512,
+                        "y": 397
+                      },
+                      {
+                        "x": 346,
+                        "y": 397
+                      }
+                    ],
+                    "confidence": 0.996,
+                    "text": "Straight"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 523,
+                        "y": 344
+                      },
+                      {
+                        "x": 702,
+                        "y": 344
+                      },
+                      {
+                        "x": 702,
+                        "y": 397
+                      },
+                      {
+                        "x": 523,
+                        "y": 397
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "Bourbon"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 714,
+                        "y": 344
+                      },
+                      {
+                        "x": 890,
+                        "y": 344
+                      },
+                      {
+                        "x": 890,
+                        "y": 398
+                      },
+                      {
+                        "x": 714,
+                        "y": 397
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "Whiskey"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 286,
+                    "y": 415
+                  },
+                  {
+                    "x": 742,
+                    "y": 415
+                  },
+                  {
+                    "x": 742,
+                    "y": 471
+                  },
+                  {
+                    "x": 286,
+                    "y": 469
+                  }
+                ],
+                "text": "45% Alc./Vol. (90 Proof)",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 286,
+                        "y": 416
+                      },
+                      {
+                        "x": 374,
+                        "y": 417
+                      },
+                      {
+                        "x": 373,
+                        "y": 468
+                      },
+                      {
+                        "x": 286,
+                        "y": 465
+                      }
+                    ],
+                    "confidence": 0.984,
+                    "text": "45%"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 384,
+                        "y": 417
+                      },
+                      {
+                        "x": 535,
+                        "y": 417
+                      },
+                      {
+                        "x": 534,
+                        "y": 471
+                      },
+                      {
+                        "x": 384,
+                        "y": 468
+                      }
+                    ],
+                    "confidence": 0.959,
+                    "text": "Alc./Vol."
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 545,
+                        "y": 417
+                      },
+                      {
+                        "x": 612,
+                        "y": 416
+                      },
+                      {
+                        "x": 611,
+                        "y": 471
+                      },
+                      {
+                        "x": 545,
+                        "y": 471
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "(90"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 622,
+                        "y": 416
+                      },
+                      {
+                        "x": 741,
+                        "y": 415
+                      },
+                      {
+                        "x": 740,
+                        "y": 471
+                      },
+                      {
+                        "x": 622,
+                        "y": 471
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "Proof)"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 441,
+                    "y": 486
+                  },
+                  {
+                    "x": 586,
+                    "y": 486
+                  },
+                  {
+                    "x": 586,
+                    "y": 532
+                  },
+                  {
+                    "x": 441,
+                    "y": 532
+                  }
+                ],
+                "text": "750 ml",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 445,
+                        "y": 486
+                      },
+                      {
+                        "x": 513,
+                        "y": 487
+                      },
+                      {
+                        "x": 513,
+                        "y": 533
+                      },
+                      {
+                        "x": 444,
+                        "y": 533
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "750"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 523,
+                        "y": 487
+                      },
+                      {
+                        "x": 585,
+                        "y": 488
+                      },
+                      {
+                        "x": 585,
+                        "y": 532
+                      },
+                      {
+                        "x": 523,
+                        "y": 533
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "ml"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 140,
+                    "y": 545
+                  },
+                  {
+                    "x": 896,
+                    "y": 546
+                  },
+                  {
+                    "x": 896,
+                    "y": 593
+                  },
+                  {
+                    "x": 140,
+                    "y": 592
+                  }
+                ],
+                "text": "Bottled by Old Tom Distillery, Louisville, Kentucky",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 140,
+                        "y": 547
+                      },
+                      {
+                        "x": 244,
+                        "y": 547
+                      },
+                      {
+                        "x": 243,
+                        "y": 593
+                      },
+                      {
+                        "x": 140,
+                        "y": 592
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "Bottled"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 253,
+                        "y": 546
+                      },
+                      {
+                        "x": 289,
+                        "y": 546
+                      },
+                      {
+                        "x": 289,
+                        "y": 593
+                      },
+                      {
+                        "x": 252,
+                        "y": 593
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "by"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 298,
+                        "y": 546
+                      },
+                      {
+                        "x": 353,
+                        "y": 546
+                      },
+                      {
+                        "x": 353,
+                        "y": 593
+                      },
+                      {
+                        "x": 298,
+                        "y": 593
+                      }
+                    ],
+                    "confidence": 0.991,
+                    "text": "Old"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 362,
+                        "y": 546
+                      },
+                      {
+                        "x": 419,
+                        "y": 546
+                      },
+                      {
+                        "x": 419,
+                        "y": 594
+                      },
+                      {
+                        "x": 362,
+                        "y": 593
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "Tom"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 438,
+                        "y": 546
+                      },
+                      {
+                        "x": 575,
+                        "y": 546
+                      },
+                      {
+                        "x": 574,
+                        "y": 594
+                      },
+                      {
+                        "x": 438,
+                        "y": 594
+                      }
+                    ],
+                    "confidence": 0.99,
+                    "text": "Distillery,"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 584,
+                        "y": 546
+                      },
+                      {
+                        "x": 739,
+                        "y": 547
+                      },
+                      {
+                        "x": 738,
+                        "y": 593
+                      },
+                      {
+                        "x": 584,
+                        "y": 594
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "Louisville,"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 748,
+                        "y": 547
+                      },
+                      {
+                        "x": 897,
+                        "y": 548
+                      },
+                      {
+                        "x": 896,
+                        "y": 592
+                      },
+                      {
+                        "x": 748,
+                        "y": 593
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "Kentucky"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 130,
+                    "y": 642
+                  },
+                  {
+                    "x": 900,
+                    "y": 642
+                  },
+                  {
+                    "x": 900,
+                    "y": 678
+                  },
+                  {
+                    "x": 130,
+                    "y": 676
+                  }
+                ],
+                "text": "GOVERNMENT WARNING: (1) According to the Surgeon General,",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 131,
+                        "y": 643
+                      },
+                      {
+                        "x": 302,
+                        "y": 643
+                      },
+                      {
+                        "x": 302,
+                        "y": 676
+                      },
+                      {
+                        "x": 131,
+                        "y": 673
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "GOVERNMENT"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 309,
+                        "y": 643
+                      },
+                      {
+                        "x": 443,
+                        "y": 643
+                      },
+                      {
+                        "x": 442,
+                        "y": 678
+                      },
+                      {
+                        "x": 309,
+                        "y": 676
+                      }
+                    ],
+                    "confidence": 0.989,
+                    "text": "WARNING:"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 449,
+                        "y": 643
+                      },
+                      {
+                        "x": 483,
+                        "y": 643
+                      },
+                      {
+                        "x": 483,
+                        "y": 678
+                      },
+                      {
+                        "x": 449,
+                        "y": 678
+                      }
+                    ],
+                    "confidence": 0.998,
+                    "text": "(1)"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 490,
+                        "y": 643
+                      },
+                      {
+                        "x": 610,
+                        "y": 642
+                      },
+                      {
+                        "x": 609,
+                        "y": 679
+                      },
+                      {
+                        "x": 490,
+                        "y": 678
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "According"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 617,
+                        "y": 642
+                      },
+                      {
+                        "x": 639,
+                        "y": 642
+                      },
+                      {
+                        "x": 639,
+                        "y": 679
+                      },
+                      {
+                        "x": 616,
+                        "y": 679
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "to"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 646,
+                        "y": 642
+                      },
+                      {
+                        "x": 687,
+                        "y": 642
+                      },
+                      {
+                        "x": 686,
+                        "y": 679
+                      },
+                      {
+                        "x": 646,
+                        "y": 679
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "the"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 694,
+                        "y": 642
+                      },
+                      {
+                        "x": 793,
+                        "y": 642
+                      },
+                      {
+                        "x": 792,
+                        "y": 679
+                      },
+                      {
+                        "x": 693,
+                        "y": 679
+                      }
+                    ],
+                    "confidence": 0.995,
+                    "text": "Surgeon"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 800,
+                        "y": 642
+                      },
+                      {
+                        "x": 899,
+                        "y": 642
+                      },
+                      {
+                        "x": 898,
+                        "y": 678
+                      },
+                      {
+                        "x": 799,
+                        "y": 679
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "General,"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 130,
+                    "y": 676
+                  },
+                  {
+                    "x": 902,
+                    "y": 677
+                  },
+                  {
+                    "x": 902,
+                    "y": 712
+                  },
+                  {
+                    "x": 130,
+                    "y": 710
+                  }
+                ],
+                "text": "women should not drink alcoholic beverages during pregnancy",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 131,
+                        "y": 680
+                      },
+                      {
+                        "x": 219,
+                        "y": 679
+                      },
+                      {
+                        "x": 218,
+                        "y": 709
+                      },
+                      {
+                        "x": 130,
+                        "y": 708
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "women"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 228,
+                        "y": 679
+                      },
+                      {
+                        "x": 309,
+                        "y": 678
+                      },
+                      {
+                        "x": 308,
+                        "y": 709
+                      },
+                      {
+                        "x": 227,
+                        "y": 709
+                      }
+                    ],
+                    "confidence": 0.996,
+                    "text": "should"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 316,
+                        "y": 677
+                      },
+                      {
+                        "x": 359,
+                        "y": 677
+                      },
+                      {
+                        "x": 358,
+                        "y": 710
+                      },
+                      {
+                        "x": 315,
+                        "y": 709
+                      }
+                    ],
+                    "confidence": 0.998,
+                    "text": "not"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 365,
+                        "y": 677
+                      },
+                      {
+                        "x": 429,
+                        "y": 677
+                      },
+                      {
+                        "x": 429,
+                        "y": 710
+                      },
+                      {
+                        "x": 365,
+                        "y": 710
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "drink"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 436,
+                        "y": 677
+                      },
+                      {
+                        "x": 546,
+                        "y": 676
+                      },
+                      {
+                        "x": 545,
+                        "y": 711
+                      },
+                      {
+                        "x": 436,
+                        "y": 710
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "alcoholic"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 553,
+                        "y": 676
+                      },
+                      {
+                        "x": 677,
+                        "y": 677
+                      },
+                      {
+                        "x": 676,
+                        "y": 712
+                      },
+                      {
+                        "x": 552,
+                        "y": 711
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "beverages"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 684,
+                        "y": 677
+                      },
+                      {
+                        "x": 763,
+                        "y": 678
+                      },
+                      {
+                        "x": 762,
+                        "y": 712
+                      },
+                      {
+                        "x": 683,
+                        "y": 712
+                      }
+                    ],
+                    "confidence": 0.996,
+                    "text": "during"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 772,
+                        "y": 678
+                      },
+                      {
+                        "x": 900,
+                        "y": 680
+                      },
+                      {
+                        "x": 899,
+                        "y": 713
+                      },
+                      {
+                        "x": 771,
+                        "y": 712
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "pregnancy"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 130,
+                    "y": 710
+                  },
+                  {
+                    "x": 901,
+                    "y": 711
+                  },
+                  {
+                    "x": 901,
+                    "y": 745
+                  },
+                  {
+                    "x": 130,
+                    "y": 744
+                  }
+                ],
+                "text": "because of the risk of birth defects. (2) Consumption of alcoholic",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 131,
+                        "y": 714
+                      },
+                      {
+                        "x": 228,
+                        "y": 713
+                      },
+                      {
+                        "x": 227,
+                        "y": 743
+                      },
+                      {
+                        "x": 130,
+                        "y": 741
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "because"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 234,
+                        "y": 713
+                      },
+                      {
+                        "x": 258,
+                        "y": 712
+                      },
+                      {
+                        "x": 257,
+                        "y": 743
+                      },
+                      {
+                        "x": 233,
+                        "y": 743
+                      }
+                    ],
+                    "confidence": 0.998,
+                    "text": "of"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 264,
+                        "y": 712
+                      },
+                      {
+                        "x": 303,
+                        "y": 712
+                      },
+                      {
+                        "x": 302,
+                        "y": 743
+                      },
+                      {
+                        "x": 263,
+                        "y": 743
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "the"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 309,
+                        "y": 712
+                      },
+                      {
+                        "x": 354,
+                        "y": 712
+                      },
+                      {
+                        "x": 353,
+                        "y": 744
+                      },
+                      {
+                        "x": 308,
+                        "y": 744
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "risk"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 361,
+                        "y": 712
+                      },
+                      {
+                        "x": 384,
+                        "y": 711
+                      },
+                      {
+                        "x": 383,
+                        "y": 744
+                      },
+                      {
+                        "x": 360,
+                        "y": 744
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "of"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 391,
+                        "y": 711
+                      },
+                      {
+                        "x": 446,
+                        "y": 711
+                      },
+                      {
+                        "x": 445,
+                        "y": 745
+                      },
+                      {
+                        "x": 390,
+                        "y": 744
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "birth"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 453,
+                        "y": 711
+                      },
+                      {
+                        "x": 547,
+                        "y": 711
+                      },
+                      {
+                        "x": 546,
+                        "y": 745
+                      },
+                      {
+                        "x": 452,
+                        "y": 745
+                      }
+                    ],
+                    "confidence": 0.992,
+                    "text": "defects."
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 554,
+                        "y": 711
+                      },
+                      {
+                        "x": 588,
+                        "y": 711
+                      },
+                      {
+                        "x": 587,
+                        "y": 746
+                      },
+                      {
+                        "x": 553,
+                        "y": 745
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "(2)"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 595,
+                        "y": 711
+                      },
+                      {
+                        "x": 755,
+                        "y": 711
+                      },
+                      {
+                        "x": 754,
+                        "y": 746
+                      },
+                      {
+                        "x": 594,
+                        "y": 746
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "Consumption"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 762,
+                        "y": 711
+                      },
+                      {
+                        "x": 785,
+                        "y": 711
+                      },
+                      {
+                        "x": 785,
+                        "y": 746
+                      },
+                      {
+                        "x": 761,
+                        "y": 746
+                      }
+                    ],
+                    "confidence": 0.998,
+                    "text": "of"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 792,
+                        "y": 711
+                      },
+                      {
+                        "x": 901,
+                        "y": 712
+                      },
+                      {
+                        "x": 900,
+                        "y": 745
+                      },
+                      {
+                        "x": 791,
+                        "y": 746
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "alcoholic"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 131,
+                    "y": 744
+                  },
+                  {
+                    "x": 908,
+                    "y": 744
+                  },
+                  {
+                    "x": 908,
+                    "y": 779
+                  },
+                  {
+                    "x": 131,
+                    "y": 778
+                  }
+                ],
+                "text": "beverages impairs your ability to drive a car or operate machinery,",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 131,
+                        "y": 745
+                      },
+                      {
+                        "x": 248,
+                        "y": 745
+                      },
+                      {
+                        "x": 248,
+                        "y": 778
+                      },
+                      {
+                        "x": 131,
+                        "y": 777
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "beverages"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 255,
+                        "y": 745
+                      },
+                      {
+                        "x": 342,
+                        "y": 745
+                      },
+                      {
+                        "x": 342,
+                        "y": 778
+                      },
+                      {
+                        "x": 255,
+                        "y": 778
+                      }
+                    ],
+                    "confidence": 0.995,
+                    "text": "impairs"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 349,
+                        "y": 745
+                      },
+                      {
+                        "x": 405,
+                        "y": 745
+                      },
+                      {
+                        "x": 405,
+                        "y": 779
+                      },
+                      {
+                        "x": 349,
+                        "y": 778
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "your"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 412,
+                        "y": 745
+                      },
+                      {
+                        "x": 481,
+                        "y": 745
+                      },
+                      {
+                        "x": 481,
+                        "y": 779
+                      },
+                      {
+                        "x": 412,
+                        "y": 779
+                      }
+                    ],
+                    "confidence": 0.995,
+                    "text": "ability"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 488,
+                        "y": 745
+                      },
+                      {
+                        "x": 510,
+                        "y": 745
+                      },
+                      {
+                        "x": 510,
+                        "y": 779
+                      },
+                      {
+                        "x": 488,
+                        "y": 779
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "to"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 517,
+                        "y": 745
+                      },
+                      {
+                        "x": 578,
+                        "y": 745
+                      },
+                      {
+                        "x": 578,
+                        "y": 779
+                      },
+                      {
+                        "x": 517,
+                        "y": 779
+                      }
+                    ],
+                    "confidence": 0.996,
+                    "text": "drive"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 584,
+                        "y": 745
+                      },
+                      {
+                        "x": 596,
+                        "y": 745
+                      },
+                      {
+                        "x": 596,
+                        "y": 779
+                      },
+                      {
+                        "x": 584,
+                        "y": 779
+                      }
+                    ],
+                    "confidence": 0.997,
+                    "text": "a"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 602,
+                        "y": 745
+                      },
+                      {
+                        "x": 640,
+                        "y": 745
+                      },
+                      {
+                        "x": 640,
+                        "y": 780
+                      },
+                      {
+                        "x": 602,
+                        "y": 780
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "car"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 647,
+                        "y": 745
+                      },
+                      {
+                        "x": 672,
+                        "y": 745
+                      },
+                      {
+                        "x": 672,
+                        "y": 780
+                      },
+                      {
+                        "x": 647,
+                        "y": 780
+                      }
+                    ],
+                    "confidence": 0.998,
+                    "text": "or"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 679,
+                        "y": 745
+                      },
+                      {
+                        "x": 768,
+                        "y": 744
+                      },
+                      {
+                        "x": 768,
+                        "y": 780
+                      },
+                      {
+                        "x": 679,
+                        "y": 780
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "operate"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 775,
+                        "y": 744
+                      },
+                      {
+                        "x": 907,
+                        "y": 744
+                      },
+                      {
+                        "x": 907,
+                        "y": 780
+                      },
+                      {
+                        "x": 775,
+                        "y": 780
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "machinery,"
+                  }
+                ]
+              },
+              {
+                "boundingPolygon": [
+                  {
+                    "x": 132,
+                    "y": 779
+                  },
+                  {
+                    "x": 515,
+                    "y": 778
+                  },
+                  {
+                    "x": 515,
+                    "y": 812
+                  },
+                  {
+                    "x": 132,
+                    "y": 813
+                  }
+                ],
+                "text": "and may cause health problems.",
+                "words": [
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 132,
+                        "y": 780
+                      },
+                      {
+                        "x": 173,
+                        "y": 781
+                      },
+                      {
+                        "x": 173,
+                        "y": 812
+                      },
+                      {
+                        "x": 132,
+                        "y": 813
+                      }
+                    ],
+                    "confidence": 0.999,
+                    "text": "and"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 179,
+                        "y": 781
+                      },
+                      {
+                        "x": 230,
+                        "y": 781
+                      },
+                      {
+                        "x": 230,
+                        "y": 812
+                      },
+                      {
+                        "x": 179,
+                        "y": 812
+                      }
+                    ],
+                    "confidence": 0.994,
+                    "text": "may"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 236,
+                        "y": 781
+                      },
+                      {
+                        "x": 306,
+                        "y": 781
+                      },
+                      {
+                        "x": 306,
+                        "y": 812
+                      },
+                      {
+                        "x": 236,
+                        "y": 812
+                      }
+                    ],
+                    "confidence": 0.993,
+                    "text": "cause"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 313,
+                        "y": 781
+                      },
+                      {
+                        "x": 386,
+                        "y": 780
+                      },
+                      {
+                        "x": 386,
+                        "y": 812
+                      },
+                      {
+                        "x": 312,
+                        "y": 812
+                      }
+                    ],
+                    "confidence": 0.991,
+                    "text": "health"
+                  },
+                  {
+                    "boundingPolygon": [
+                      {
+                        "x": 393,
+                        "y": 780
+                      },
+                      {
+                        "x": 514,
+                        "y": 779
+                      },
+                      {
+                        "x": 514,
+                        "y": 813
+                      },
+                      {
+                        "x": 393,
+                        "y": 813
+                      }
+                    ],
+                    "confidence": 0.992,
+                    "text": "problems."
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "warnings": null
+  },
+  "warnings": []
+}
+Traceback (most recent call last):
+  File "/home/ama/github/barrel/scripts/smoke_azure.py", line 117, in <module>
+    main()
+  File "/home/ama/github/barrel/scripts/smoke_azure.py", line 91, in main
+    assert result.get("overall_status") == "Pass", f"Expected Pass, got {result.get('overall_status')}"
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Expected Pass, got Needs Review

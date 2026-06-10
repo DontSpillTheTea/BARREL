@@ -169,12 +169,7 @@ tasks:
     cmds:
       - az account show || (echo "Please run 'az login'" && exit 1)
 
-  azure:build:
-    desc: Build images for Azure Container Registry
-    cmds:
-      - echo "Building ACR images..."
-      # Add docker build commands here later
-      
+
   azure:infra:init:
     desc: Initialize OpenTofu via Terragrunt
     cmds:
@@ -197,23 +192,45 @@ tasks:
 
   azure:build:
     desc: Build images for Azure Container Registry
+    vars:
+      ACR_SERVER:
+        sh: az acr list --query "[0].loginServer" -o tsv
+      TAG:
+        sh: git rev-parse --short HEAD || echo "latest"
     cmds:
       - echo "Building API image..."
-      - docker build -t barrel-api -f apps/api/Dockerfile .
+      - docker build --platform linux/amd64 -t {{.ACR_SERVER}}/barrel-api:{{.TAG}} -f apps/api/Dockerfile .
       - echo "Building Web image..."
-      - docker build -t barrel-web -f apps/web/Dockerfile .
+      - docker build --platform linux/amd64 --build-arg VITE_BUILD_SHA={{.TAG}} --build-arg VITE_API_BASE_URL=https://barrel-api.gentlesand-de48fa41.eastus.azurecontainerapps.io -t {{.ACR_SERVER}}/barrel-web:{{.TAG}} apps/web
 
   azure:deploy:
     desc: Push images to Azure Container Registry and update Container Apps
+    vars:
+      ACR_SERVER:
+        sh: az acr list --query "[0].loginServer" -o tsv
+      RG:
+        sh: az group list --query "[0].name" -o tsv
+      TAG:
+        sh: git rev-parse --short HEAD || echo "latest"
     cmds:
-      - echo "Assuming ACR login has been performed..."
-      - echo "Pushing and restarting container apps..."
-      - echo "Please ensure you run azure:infra:apply to provision ACR first."
+      - az acr login --name {{.ACR_SERVER}}
+      - docker push {{.ACR_SERVER}}/barrel-api:{{.TAG}}
+      - docker push {{.ACR_SERVER}}/barrel-web:{{.TAG}}
+      - az containerapp update -n barrel-api -g {{.RG}} --image {{.ACR_SERVER}}/barrel-api:{{.TAG}}
+      - az containerapp update -n barrel-web -g {{.RG}} --image {{.ACR_SERVER}}/barrel-web:{{.TAG}}
+
+  azure:smoke:e2e:
+    desc: Run Playwright smoke tests against deployed Azure app
+    cmds:
+      - cd apps/web && BARREL_AZURE_WEB_URL="$BARREL_AZURE_WEB_URL" npm run test:e2e
 
   azure:smoke:
-    desc: Run smoke tests against Azure deployment
+    desc: Run python smoke tests against deployed Azure app
     cmds:
-      - python3 scripts/smoke_azure.py
+      - python3 -u scripts/smoke_azure.py
+      - python3 -u scripts/smoke_ai_provider.py
+      - python3 -u scripts/smoke_review_history.py
+      - python3 -u scripts/smoke_batch_upload.py
 
   azure:outputs:
     desc: Show OpenTofu outputs

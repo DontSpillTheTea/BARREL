@@ -29,12 +29,13 @@ func getRule(catalog *rules.Catalog, id string) models.RuleBreadcrumb {
 
 func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata *providers.OCRResult) models.LabelAnalysisResult {
 	res := models.LabelAnalysisResult{
-		BeverageType:  input.BeverageType,
-		OCRText:       input.Text,
-		OCR:           ocrMetadata,
-		OverallStatus: "Pass",
+		BeverageType:   input.BeverageType,
+		OCRText:        input.Text,
+		OCR:            ocrMetadata,
+		ExpectedFields: input.ExpectedFields,
+		OverallStatus:  "Pass",
 		Warnings:      []string{},
-		AIEscalation: models.AIEscalation{
+		AISecondRead: &models.AISecondRead{
 			Eligible: false,
 			Used:     false,
 			Provider: "none",
@@ -221,47 +222,46 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 		res.OverallConfidence = totalConf / len(res.Fields)
 	}
 
+	if ocrMetadata != nil && ocrMetadata.MeanConfidence > 0 {
+		res.OverallConfidence = int(float64(res.OverallConfidence)*0.5 + ocrMetadata.MeanConfidence*0.5)
+	}
+
+	// Eligibility logic for AI Second Read
 	isOcrPoor := false
-	if ocrMetadata != nil {
-		if ocrMetadata.MeanConfidence > 0 {
-			res.OverallConfidence = int(float64(res.OverallConfidence)*0.5 + ocrMetadata.MeanConfidence*0.5)
-			if ocrMetadata.MeanConfidence < 65 {
-				isOcrPoor = true
-			}
-		}
+	if res.OverallConfidence < 85 {
+		isOcrPoor = true
 	}
 
-	if res.OverallStatus == "Pass" {
-		if res.OverallConfidence < 85 && res.OverallConfidence >= 65 {
-			res.OverallStatus = "Needs Review"
-			hasMissingOrAmbiguous = true
-		} else if res.OverallConfidence < 65 {
-			res.OverallStatus = "Likely Fail"
-			hasMissingOrAmbiguous = true
-		}
-	}
-	
-	if ocrMetadata != nil && len(ocrMetadata.Warnings) > 0 {
-		res.Warnings = append(res.Warnings, ocrMetadata.Warnings...)
-		for _, w := range ocrMetadata.Warnings {
-			if w == "Accurate OCR unavailable; fast fallback used. Result requires review." || w == "Deep OCR was not ready. Used fast OCR fallback." || w == "Fast fallback OCR may miss or corrupt label text. Results require review." {
-				if res.OverallStatus == "Pass" {
-					res.OverallStatus = "Needs Review"
-				}
-				hasMissingOrAmbiguous = true
-			}
-		}
-	}
+	// dense text / high OCR text volume but missing key fields
+	isDenseText := len(input.Text) > 400 && hasMissingOrAmbiguous
 
-	if isOcrPoor {
-		res.AIEscalation.Eligible = true
-		res.AIEscalation.Reason = "Local OCR providers returned low confidence."
+	// Warning detected but not exact case
+	warningNotExact := res.ExtractedFields.GovernmentWarningFound && govStatus == "Needs Review"
+
+	// Typo candidate
+	hasWarningTypo := validators.FuzzyContains(normText, "GOVERMENT") || validators.FuzzyContains(normText, "Surgon") || validators.FuzzyContains(normText, "pregancy")
+
+	if res.OverallStatus != "Pass" {
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Overall status is not Pass."
 	} else if hasMissingOrAmbiguous {
-		res.AIEscalation.Eligible = true
-		res.AIEscalation.Reason = "Required fields remained missing after local OCR."
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Required fields remained missing after local OCR."
+	} else if warningNotExact {
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Government warning detected but case is not exact."
+	} else if hasWarningTypo {
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Suspicious typos detected in Government Warning."
+	} else if isDenseText {
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "High text density with missing or ambiguous fields."
+	} else if isOcrPoor {
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Azure Vision OCR returned low confidence."
 	} else if ocrMetadata != nil && ocrMetadata.Status == "error" {
-		res.AIEscalation.Eligible = true
-		res.AIEscalation.Reason = "OCR provider was unavailable or errored."
+		res.AISecondRead.Eligible = true
+		res.AISecondRead.Reason = "Azure Vision OCR was unavailable or errored."
 	}
 
 	return res

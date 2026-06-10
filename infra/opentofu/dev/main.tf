@@ -60,6 +60,17 @@ resource "azurerm_container_app" "api" {
   resource_group_name          = azurerm_resource_group.main.name
   revision_mode                = "Single"
 
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.main.admin_password
+  }
+
+  registry {
+    server               = azurerm_container_registry.main.login_server
+    username             = azurerm_container_registry.main.admin_username
+    password_secret_name = "acr-password"
+  }
+
   template {
     container {
       name   = "api"
@@ -97,7 +108,7 @@ resource "azurerm_container_app" "api" {
       }
       env {
         name  = "AZURE_VISION_API_VERSION"
-        value = "2024-02-01-preview" # Using standard vision API version
+        value = "2023-10-01" # Using standard vision API version
       }
       env {
         name  = "AZURE_STORAGE_ACCOUNT"
@@ -123,6 +134,30 @@ resource "azurerm_container_app" "api" {
         name        = "BARREL_REVIEW_TOKEN"
         secret_name = "review-token"
       }
+      env {
+        name  = "AI_SECOND_READ_ENABLED"
+        value = var.ai_second_read_enabled ? "true" : "false"
+      }
+      env {
+        name  = "AI_SECOND_READ_AUTO_ON_FAIL"
+        value = var.ai_second_read_auto_on_fail ? "true" : "false"
+      }
+      env {
+        name  = "AZURE_OPENAI_ENDPOINT"
+        value = var.azure_openai_endpoint
+      }
+      env {
+        name        = "AZURE_OPENAI_API_KEY"
+        secret_name = "azure-openai-key"
+      }
+      env {
+        name  = "AZURE_OPENAI_DEPLOYMENT"
+        value = var.azure_openai_deployment
+      }
+      env {
+        name  = "AZURE_OPENAI_API_VERSION"
+        value = var.azure_openai_api_version
+      }
     }
   }
 
@@ -133,6 +168,10 @@ resource "azurerm_container_app" "api" {
   secret {
     name  = "vision-key"
     value = azurerm_cognitive_account.vision.primary_access_key
+  }
+  secret {
+    name  = "azure-openai-key"
+    value = var.azure_openai_api_key != "" ? var.azure_openai_api_key : "dummy"
   }
   secret {
     name  = "demo-password"
@@ -159,6 +198,17 @@ resource "azurerm_container_app" "web" {
   resource_group_name          = azurerm_resource_group.main.name
   revision_mode                = "Single"
 
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.main.admin_password
+  }
+
+  registry {
+    server               = azurerm_container_registry.main.login_server
+    username             = azurerm_container_registry.main.admin_username
+    password_secret_name = "acr-password"
+  }
+
   template {
     container {
       name   = "web"
@@ -174,7 +224,7 @@ resource "azurerm_container_app" "web" {
 
   ingress {
     external_enabled = true
-    target_port      = 80
+    target_port      = 5173
     traffic_weight {
       percentage      = 100
       latest_revision = true

@@ -42,3 +42,34 @@ variable "storage_container_name" {
   type    = string
   default = "barrel-review"
 }
+
+variable "ai_second_read_enabled" {
+  type    = bool
+  default = false
+}
+
+variable "ai_second_read_auto_on_fail" {
+  type    = bool
+  default = false
+}
+
+variable "azure_openai_endpoint" {
+  type    = string
+  default = ""
+}
+
+variable "azure_openai_api_key" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "azure_openai_deployment" {
+  type    = string
+  default = ""
+}
+
+variable "azure_openai_api_version" {
+  type    = string
+  default = ""
+}

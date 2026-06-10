@@ -1,34 +1,60 @@
 # Security
 
+## Product posture
 
-**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
+BARREL handles potentially sensitive label images and reviewer decisions. The system is advisory only.
 
+**Required product statement:** BARREL is a review assistant, not a final legal determination system.
 
-## General Policies
-- **No committed secrets**: Do not commit keys, `.env` files, or production credentials.
-- **No required outbound AI**: System operates entirely locally by default.
-- **No arbitrary URL fetching**: To prevent SSRF, external URLs are not retrieved based on user input.
-- **No permanent upload persistence by default**: Uploads are processed and discarded.
-- **Azure Key Vault**: Optional future path for secret management in Azure environments, but not required locally.
+## Core policies
 
-## Container Security
-- **Container boundaries**: Strict separation between web, api, and ocr-worker. (Verified working via Docker Compose)
-- **Internal OCR Worker**: The OCR worker is not exposed externally in the final topology.
-- **Non-root containers**: Running containers as non-root is a goal.
+- No committed secrets.
+- Review token or evaluator login must gate API access.
+- Secrets stay in environment variables or Azure-managed secret stores.
+- Blob containers must not be public.
+- Do not log raw secrets, API keys, or sensitive auth material.
+- Do not log full raw label contents indiscriminately in application logs.
+- No arbitrary URL fetching from user-provided inputs.
 
-## Upload Restrictions
-- **Upload size limits**: Hard limits on file sizes (e.g. 25MB).
-- **MIME/extension allowlists**: Only specific image/zip formats are permitted.
+## AI provider handling
 
-## Azure Target Architecture Posture (Phase 10+)
-When deployed to Azure via OpenTofu/Terragrunt:
-- **Public HTTPS only**: The API and Web UI are only accessible via HTTPS.
-- **Authentication**: Evaluator login/token is provided as a demo tradeoff to protect the API.
-- **No public signup**: The authentication system uses a single configured demo account to prevent public signups.
-- **Secrets Management**: Azure Vision keys and `BARREL_REVIEW_TOKEN` remain server-side and are injected into the Container App as secrets from OpenTofu or Key Vault.
-- **Azure Vision Access**: The backend API uses Azure Vision to perform OCR. The backend sends the image directly; Azure Vision receives uploaded label images.
-- **Data Retention**: Review history, including images, expected JSON, OCR extractions, and Reviewer Decisions, are saved to Azure Blob Storage to form the evidence logger.
-- **Business Sensitivity**: Raw OCR/image artifacts stored in Blob Storage may contain business-sensitive information.
-- **CORS**: A CORS allowlist must restrict cross-origin requests to only known domains (e.g. the frontend app domain).
-- **No general LLM calls yet**: We are using Azure Computer Vision OCR. General AI/LLM escalation remains disabled.
-- **Cleanup**: The `task azure:infra:destroy` command exists to clean up all deployed Azure resources and avoid rogue consumption.
+- Images and parsed metadata are sent to the configured AI provider when `ai_native` is used.
+- No model provider call should happen without an explicit configured provider.
+- Preferred hosted provider is Azure OpenAI / Azure AI Foundry if quota is available.
+- Direct OpenAI API may be used as a temporary fallback if Azure OpenAI is blocked by subscription quota or region policy.
+- `azure_vision_ocr` may be used for debug/baseline evidence but is not the primary parser.
+
+## Data handling
+
+Preferred review evidence storage is object/blob storage.
+
+Azure implementation:
+
+- Azure Blob Storage for stored evidence
+- non-public containers
+- paths such as:
+  - `jobs/{job_id}/image.<ext>`
+  - `jobs/{job_id}/ai_raw.json`
+  - `jobs/{job_id}/result.json`
+  - `jobs/{job_id}/decision.json`
+
+Stored artifacts may contain business-sensitive label images and parsed metadata. Treat them accordingly.
+
+## Access control
+
+- No public signup.
+- HTTPS-only inbound access in Azure.
+- Demo evaluator credentials are a take-home tradeoff and must remain server-controlled.
+- CORS should only allow known frontend origins.
+
+## Upload restrictions
+
+- enforce upload size limits
+- restrict MIME types and extensions to supported image and zip formats
+- reject unsupported or malformed uploads early
+
+## Operational expectations
+
+- Use local validation first and Azure smoke second.
+- Do not claim deployment success without smoke tests.
+- Do not expose provider secrets in scripts, docs, screenshots, or commits.

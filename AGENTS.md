@@ -1,436 +1,109 @@
-# AGENTS.md
-
-
-**Note**: `task` is the supported command interface. Docker Compose is wrapped by Task. Normal reviewers should use `task`, not Make or raw Docker Compose.
-
-
 # BARREL Agent Guide
 
 Project: **BARREL: Beverage Alcohol Review & Regulatory Evidence Logger**
 
 Repo:
-
 ```text
 git@github.com:DontSpillTheTea/barrel.git
 ```
 
 Local path:
-
 ```text
 /home/ama/github/barrel
 ```
 
-BARREL is a local-first OCR and compliance-assist prototype for reviewing alcohol beverage labels with confidence scoring and regulatory breadcrumbs.
+BARREL is an AI-native beverage alcohol label review assistant for label image review, deterministic checking, and evidence logging.
 
 This is for a take-home assignment. Keep the project practical, working, and well-documented.
 
----
-
 ## Core rule
 
-Build a **review assistant**, not a black-box compliance oracle.
-
-BARREL must remain:
-
-* local-first by default
-* usable without required outbound AI calls
-* transparent about confidence and uncertainty
-* simple enough for nontechnical compliance agents
-* aligned with the take-home requirements
-* documented as it evolves
+Build a review assistant, not a final legal determination system.
 
 Required statement to preserve:
-
 ```text
 BARREL is a review assistant, not a final legal determination system.
 ```
 
----
+## Current direction
 
-## Current architecture direction
-
-BARREL is moving toward a Docker Compose based, polyglot prototype:
+BARREL is full-in on Azure-hosted, API-based AI-native parsing.
 
 ```text
 React/Vite web UI
-→ Go API and rules engine
-→ Python OCR worker
-→ local OCR engine such as Tesseract
+→ Go API
+→ hosted image-capable AI parser
+→ deterministic BARREL checks
+→ object/blob review evidence storage
+→ review history/detail viewer
 ```
 
-Primary services:
+Current product direction:
 
-```text
-apps/web         React/Vite frontend
-apps/api         Go API server, upload handling, rules engine, validation, reports
-apps/ocr-worker  Python OCR/image-processing worker
-rules/ttb        YAML regulatory rule catalog
-samples          generated fixtures, expected JSON, prompts, and batch zips
-```
+- `ai_native` is the primary parser.
+- Azure OpenAI / Azure AI Foundry hosted API is preferred when quota is available.
+- Direct OpenAI API is an acceptable temporary fallback if Azure OpenAI is blocked by subscription quota or region policy.
+- `azure_vision_ocr` can exist as optional debug/baseline evidence only.
+- Local-first OCR worker paths are not the primary goal and should not be presented as the normal evaluator workflow.
+- Object/blob storage is preferred over Postgres unless requirements later prove otherwise.
 
-Rationale:
+## User workflow
 
-* Docker Compose gives a repeatable demo path across Ubuntu and Windows.
-* Go is a good fit for API routing, upload handling, JSON contracts, concurrency, and rules evaluation.
-* Python is a better fit for OCR and image-processing libraries.
-* OCR dependencies are easier to standardize in containers than through native Windows setup.
-* The system still runs local-first and does not require outbound AI calls.
+1. Evaluator logs in with predefined credentials.
+2. Uploads one image or a `.zip` batch.
+3. BARREL creates one async job per image.
+4. BARREL submits the image to `ai_native`.
+5. BARREL runs deterministic validation and expected-vs-observed scoring.
+6. BARREL stores image/result/review evidence in object/blob storage.
+7. Review History shows each submission row-by-row.
+8. Clicking a history row restores the original image and full parsed detail.
+9. Human reviewer approves, rejects, or marks needs-more-info.
 
-Avoid running two competing backend designs long-term. Older Python API scaffold files may exist from bootstrap, but the intended API implementation is Go.
-
----
+Human review is the fallback. OCR fallback is not the primary product story.
 
 ## Command runner direction
 
-Taskfile.yml is the sole supported user-facing command interface.
-Docker Compose is an implementation detail wrapped by Task.
-Makefile, if present, is legacy compatibility only and should not be used in docs or normal workflows.
-
-Expected task commands:
-
-```bash
-task help
-task check-env
-task dev
-task up
-task down
-task restart
-task logs
-task build
-task rebuild
-task ps
-task test
-task test:api
-task test:ocr
-task test:web
-task smoke
-task smoke:backend
-task samples
-task clean
-task status
-```
-
-Windows guidance should prefer Docker Desktop + WSL2. Native development may be supported, but Docker Compose is the preferred demo/reviewer path.
-
----
-
-## Read first
-
-Before meaningful work, read:
-
-```text
-AGENTS.md
-README.md
-docs/ARCHITECTURE.md
-docs/ASSUMPTIONS.md
-docs/ROADMAP.md
-docs/SECURITY.md
-docs/RULES_AND_REGULATORY_BREADCRUMBS.md
-docs/TAKE_HOME_ALIGNMENT.md
-.env.example
-Taskfile.yml
-Makefile
-docker-compose.yml
-```
-
-Treat `docs/` as project memory. Future agents may not have prior chat context.
-
-If one of these files does not exist yet, create or update it when the task requires it.
-
----
-
-## Documentation rule
-
-Update docs when project state changes.
-
-Examples:
-
-* Architecture changed → update `docs/ARCHITECTURE.md`
-* Scope or phase changed → update `docs/ROADMAP.md`
-* Security/secrets changed → update `docs/SECURITY.md`
-* Rules changed → update `docs/RULES_AND_REGULATORY_BREADCRUMBS.md`
-* Assumptions changed → update `docs/ASSUMPTIONS.md`
-* Take-home alignment improved → update `docs/TAKE_HOME_ALIGNMENT.md`
-* Commands changed → update `README.md`, `Taskfile.yml`, and `Makefile`
-* Runtime topology changed → update `docker-compose.yml` and `docs/ARCHITECTURE.md`
-
-Docs are part of the deliverable.
-
----
-
-## Long-running command discipline
-
-- Do not repeatedly poll background task logs.
-- Do not repeatedly call background status tools in a loop.
-- Prefer one foreground command with a clear timeout.
-- If a long-running command is necessary, run it once and wait for completion.
-- Use at most one targeted log inspection per failure hypothesis.
-- Never `cat`/tail the same task log repeatedly.
-- For OCR warmup/inference, use Task commands with built-in polling and bounded timeouts.
-
----
-
-## Product direction
-
-Target workflow:
-
-```text
-browser upload
-→ local OCR
-→ image quality scoring
-→ deterministic extraction
-→ fuzzy/normalized matching
-→ advisory rule checks
-→ confidence scoring
-→ regulatory breadcrumbs
-→ batch review UI
-→ downloadable report
-```
-
-Default config must work with:
-
-```env
-AI_PROVIDER=none
-OCR_PROVIDER=tesseract
-SECRET_PROVIDER=env
-```
-
-Cloud AI may be optional later, but must not be required for the core app.
-
----
-
-## Security rules
-
-Never commit secrets.
-
-Do not commit:
-
-```text
-.env
-*.pem
-*.key
-*.p12
-*.pfx
-credentials.json
-secrets.json
-```
-
-Use `.env.example` for placeholders.
-
-Azure Key Vault may be documented/scaffolded as an optional future integration because the stakeholder environment is Azure-based, but Azure must not be required for local development.
-
-Uploaded labels should be treated as potentially sensitive.
-
-Security expectations:
-
-* no required outbound AI endpoints
-* no arbitrary user-controlled URL fetching
-* upload size limits
-* image/zip MIME and extension allowlists
-* no permanent upload persistence by default
-* safe errors, not raw stack traces
-* no analytics or tracking
-* no unnecessary SaaS dependencies
-* containers should eventually run as non-root
-* only the web-facing service should be exposed externally in the full Compose topology
-
----
-
-## Rule/checking rules
-
-Rules should live in the top-level rules catalog:
-
-```text
-rules/ttb/
-```
-
-Expected rule files:
-
-```text
-rules/ttb/health_warning.yaml
-rules/ttb/distilled_spirits.yaml
-rules/ttb/wine.yaml
-rules/ttb/malt_beverages.yaml
-```
-
-Legacy/bootstrap rule files may also exist under:
-
-```text
-apps/api/app/rules/
-```
-
-Prefer the top-level `rules/ttb/` structure going forward.
-
-Rules docs live in:
-
-```text
-docs/RULES_AND_REGULATORY_BREADCRUMBS.md
-```
-
-Initial rule areas:
-
-* Government Health Warning Statement
-* Brand Name
-* Alcohol Content
-* Net Contents
-* Class/Type designation
-
-Use advisory language. Do not claim the rule catalog is complete. Do not fabricate legal authority.
-
-Each check should show a breadcrumb: rule id, citation/source, and explanation.
-
----
-
-## Confidence rules
-
-Confidence is not compliance.
-
-A label can be:
-
-* likely compliant but low confidence because the image is bad
-* clearly mismatched with high confidence
-* unreadable and therefore Needs Review
-
-Default statuses:
-
-```text
-Pass
-Needs Review
-Likely Fail
-```
-
-Suggested thresholds:
-
-```text
->= 85%    Pass
-65-84%    Needs Review
-< 65%     Likely Fail
-```
-
-Show raw OCR text somewhere inspectable.
-
----
-
-## UX rules
-
-Prioritize:
-
-1. Drag-and-drop upload
-2. Batch summary table
-3. Clear status badges
-4. Per-label detail view
-5. Raw OCR visibility
-6. Field-by-field explanations
-7. Regulatory breadcrumbs
-8. CSV/JSON download
-
-Use plain language. Avoid jargon.
-
----
+- `make setup` is the bootstrap entry point for installing local tools.
+- `task` is the supported day-to-day command interface.
+
+Expected flow:
+
+1. `make setup`
+2. `az login`
+3. `task azure:login-check`
+4. `task dev`
+5. `task test:api`
+6. `task smoke:local-ai`
+7. `task azure:deploy`
+8. `task azure:smoke:ai-native`
+
+Use local tests first and Azure smoke second.
 
 ## Engineering rules
 
-Prefer a working vertical slice over broad incomplete features.
+- Do not push unless explicitly asked.
+- Do not deploy before a working AI model endpoint is proven.
+- Do not run heavy Playwright tests against Azure unless explicitly requested.
+- Do not randomly region-hop Azure OpenAI. Prove which subscription, region, model, and deployment actually have usable quota first.
+- Do not claim success without smoke tests.
+- Do not silently fall back from `ai_native` to `azure_vision_ocr`.
+- Do not describe Ollama, Hugging Face endpoints, GPU VMs, or Azure ML managed endpoints as the preferred implementation.
+- Keep docs updated whenever architecture or workflow changes.
 
-Good implementation order:
+## Storage model
 
-1. Sample fixture matrix
-2. Docker Compose scaffold
-3. Taskfile command runner
-4. Go API health endpoint
-5. Python OCR worker health endpoint
-6. API-to-worker OCR call
-7. Rule catalog loader
-8. Warning statement checker
-9. ABV/proof/net contents extraction
-10. Confidence scoring
-11. Upload endpoint
-12. Batch/zip endpoint
-13. Reports
-14. Frontend upload UI
-15. Batch results table
-16. Detail view
+Preferred review evidence layout:
 
-Avoid early overbuild:
+- `jobs/{job_id}/image.<ext>`
+- `jobs/{job_id}/ai_raw.json`
+- `jobs/{job_id}/result.json`
+- `jobs/{job_id}/decision.json`
 
-* authentication
-* database persistence
-* COLA integration
-* mandatory cloud AI
-* full legal rule coverage
-* Redis or queues unless needed
-* reverse proxy unless needed for deployment
-* complex microservice mesh beyond web/api/ocr-worker
+Azure implementation uses Azure Blob Storage.
 
----
+## Security expectations
 
-## Docker and runtime rules
-
-Docker Compose is the preferred demo/reviewer runtime.
-
-Expected services:
-
-```text
-web
-api
-ocr-worker
-```
-
-Only expose what is necessary.
-
-Initial development may expose:
-
-```text
-web: localhost frontend port
-api: localhost API port
-ocr-worker: internal only when practical
-```
-
-The final demo topology should avoid exposing the OCR worker directly.
-
-Do not require outbound internet at runtime for label analysis.
-
----
-
-## Git rules
-
-Before changes:
-
-```bash
-git status --short
-```
-
-After changes:
-
-```bash
-git status --short
-```
-
-Do not overwrite user work. Read existing files before editing.
-
-Use focused commits. Do not push unless explicitly asked.
-
----
-
-## Definition of done for any task
-
-A task is done when:
-
-* code/docs are updated
-* relevant checks ran, or skipped with a stated reason
-* docs reflect any changed project state
-* `task` / `make` commands are updated if workflow changed
-* git status is reviewed
-* summary explains what changed and what remains
-
----
-
-## Final product story
-
-BARREL helps alcohol label reviewers move faster by extracting label text, checking expected fields, flagging mismatches, scoring confidence, and showing regulatory breadcrumbs.
-
-It is intentionally local-first because the target environment may restrict outbound network access and because production deployment would require careful data handling.
-
-It uses Go for the API and rules workflow, Python for OCR/image processing, Docker Compose for repeatable review/demo setup, and go-task as the cross-platform command runner.
-
-It assists human reviewers. It does not replace them.
+- No public signup.
+- HTTPS-only inbound access in Azure.
+- Evaluator login or review token gates API access.
+- Secrets stay in environment variables or Azure-managed secret stores.
