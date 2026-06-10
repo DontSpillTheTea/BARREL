@@ -65,6 +65,8 @@ func main() {
 		json.NewEncoder(w).Encode(res)
 	})
 
+	security.RegisterAuthRoutes()
+
 	http.HandleFunc("/api/v1/ocr/extract", security.RequireToken(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		if r.Method != http.MethodPost {

@@ -245,6 +245,92 @@ function App() {
     setDecisionNotes('')
   }
 
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loginUsername, setLoginUsername] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginError, setLoginError] = useState('')
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (!reviewToken) {
+        setIsAuthenticated(false)
+        setIsCheckingAuth(false)
+        return
+      }
+      try {
+        const res = await fetch(`${apiBaseUrl}/api/v1/auth/me`, { headers: getHeaders() })
+        if (res.ok) {
+          setIsAuthenticated(true)
+        } else {
+          setIsAuthenticated(false)
+        }
+      } catch (err) {
+        setIsAuthenticated(false)
+      } finally {
+        setIsCheckingAuth(false)
+      }
+    }
+    checkAuth()
+  }, [apiBaseUrl, reviewToken])
+
+  const handleLogin = async (e) => {
+    e.preventDefault()
+    setLoginError('')
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginUsername, password: loginPassword })
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Login failed')
+      }
+      const data = await res.json()
+      setReviewToken(data.token)
+      setIsAuthenticated(true)
+    } catch (err) {
+      setLoginError(err.message)
+    }
+  }
+
+  const handleLogout = async () => {
+    await fetch(`${apiBaseUrl}/api/v1/auth/logout`, { method: 'POST', headers: getHeaders() }).catch(() => {})
+    setReviewToken('')
+    setIsAuthenticated(false)
+  }
+
+  if (isCheckingAuth) {
+    return <div className="container"><p>Checking authentication...</p></div>
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="container login-container">
+        <header>
+          <h1>BARREL</h1>
+          <h2>Evaluation Mode Login</h2>
+        </header>
+        <div className="disclaimer">
+          BARREL is configured for evaluation access only. No public account creation is available.
+        </div>
+        <form onSubmit={handleLogin} className="login-form">
+          <div className="form-group">
+            <label>Username:</label>
+            <input type="text" value={loginUsername} onChange={e => setLoginUsername(e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>Password:</label>
+            <input type="password" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+          </div>
+          <button type="submit">Login</button>
+          {loginError && <p className="error-text" style={{color: 'red', marginTop: '10px'}}>{loginError}</p>}
+        </form>
+      </div>
+    )
+  }
+
   return (
     <div className="container">
       <header>
@@ -260,14 +346,9 @@ function App() {
         BARREL prioritizes accurate local OCR. Fast fallback is available for diagnostics, but it is not the default evidence path.
       </div>
 
-      <div className="token-section">
-        <label>BARREL_REVIEW_TOKEN: </label>
-        <input 
-          type="text" 
-          value={reviewToken} 
-          onChange={e => setReviewToken(e.target.value)} 
-          placeholder="Enter token for API access..."
-        />
+      <div className="auth-header" style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', background: '#eee', padding: '10px', borderRadius: '4px'}}>
+        <span><strong>Evaluation Mode Active</strong> (Provider: {ocrProvider})</span>
+        <button onClick={handleLogout} className="btn-logout" style={{padding: '5px 10px'}}>Logout</button>
       </div>
 
       <div className="status-grid">

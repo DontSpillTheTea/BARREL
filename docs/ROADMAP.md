@@ -25,7 +25,7 @@
 
 ## Phase 3: Azure Cloud Deployment (In Progress)
 11. Azure Provider integration (Vision API) (Completed)
-12. Azure Infrastructure (Terraform/Container Apps) (Scaffolded)
+12. Azure Infrastructure (OpenTofu + Terragrunt / Container Apps) (Scaffolded)
 13. Security tokens (Completed)
 14. Batch/zip analysis (Future)
 

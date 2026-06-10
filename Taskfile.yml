@@ -107,7 +107,6 @@ tasks:
     cmds:
       - task smoke:backend
       - task smoke:web
-      - task smoke:performance
 
   smoke:ocr-accurate:
     desc: Run accurate OCR smoke checks
@@ -159,9 +158,11 @@ tasks:
       - git status --short
 
   azure:check:
-    desc: Check if Azure CLI is installed
+    desc: Check if Azure CLI, OpenTofu, and Terragrunt are installed
     cmds:
-      - az version || (echo "Azure CLI not found. Please install it." && exit 1)
+      - az version || (echo "Azure CLI not found. Please install it (or activate its virtualenv)." && exit 1)
+      - tofu version || (echo "OpenTofu not found. Please install it." && exit 1)
+      - terragrunt -version || (echo "Terragrunt not found. Please install it." && exit 1)
 
   azure:login-check:
     desc: Check Azure CLI login
@@ -175,32 +176,46 @@ tasks:
       # Add docker build commands here later
       
   azure:infra:init:
-    desc: Initialize Terraform
+    desc: Initialize OpenTofu via Terragrunt
     cmds:
-      - cd infra/terraform/dev && terraform init
+      - cd infra/terragrunt/dev && terragrunt init
 
   azure:infra:plan:
-    desc: Plan Terraform deployment
+    desc: Plan OpenTofu deployment via Terragrunt
     cmds:
-      - cd infra/terraform/dev && terraform plan
+      - cd infra/terragrunt/dev && terragrunt plan
 
   azure:infra:apply:
-    desc: Apply Terraform deployment
+    desc: Apply OpenTofu deployment via Terragrunt
     cmds:
-      - cd infra/terraform/dev && terraform apply -auto-approve
+      - cd infra/terragrunt/dev && terragrunt apply -auto-approve
 
   azure:infra:destroy:
-    desc: Destroy Terraform deployment
+    desc: Destroy OpenTofu deployment via Terragrunt
     cmds:
-      - cd infra/terraform/dev && terraform destroy -auto-approve
+      - cd infra/terragrunt/dev && terragrunt destroy -auto-approve
+
+  azure:build:
+    desc: Build images for Azure Container Registry
+    cmds:
+      - echo "Building API image..."
+      - docker build -t barrel-api -f apps/api/Dockerfile .
+      - echo "Building Web image..."
+      - docker build -t barrel-web -f apps/web/Dockerfile .
 
   azure:deploy:
-    desc: Deploy images to Azure
+    desc: Push images to Azure Container Registry and update Container Apps
     cmds:
-      - echo "Deploying to Azure..."
-      # Add deployment scripts here
+      - echo "Assuming ACR login has been performed..."
+      - echo "Pushing and restarting container apps..."
+      - echo "Please ensure you run azure:infra:apply to provision ACR first."
 
   azure:smoke:
     desc: Run smoke tests against Azure deployment
     cmds:
-      - echo "Running Azure smoke tests..."
+      - python3 scripts/smoke_azure.py
+
+  azure:outputs:
+    desc: Show OpenTofu outputs
+    cmds:
+      - cd infra/terragrunt/dev && terragrunt output

@@ -23,6 +23,9 @@ Normal reviewers should run task commands, not task or docker compose directly.
 - Docker Desktop or Docker Engine
 - Docker Compose plugin
 - go-task
+- Azure CLI
+- OpenTofu
+- Terragrunt
 
 ### Quick Start
 
@@ -81,8 +84,19 @@ curl -sS -X POST http://localhost:8080/api/v1/labels/analyze \
 * **Async Analysis:** Browser analysis uses the `POST /api/v1/labels/analyze-async` job endpoint. Initial upload response is fast, and the frontend polls for completion. This prevents browser timeouts on slow CPU hardware.
 * **No Magic Updates:** Changes to project goals or architecture must be updated in `docs/` or `AGENTS.md`.
 
+## Azure Deployment Costs
+
+When deployed to Azure, the BARREL architecture attempts to keep costs low using serverless, consumption-based, and free-tier resources where applicable:
+* **Frontend**: Azure Container Apps (Consumption) or Azure Static Web Apps (Free tier) where possible.
+* **API Engine**: Azure Container Apps (Consumption plan, with free grant if available).
+* **Azure AI Vision OCR**: Pay-per-use, but free-tier (F0) is configurable for demo purposes. See Azure pricing for updates.
+* **State / Storage**: Azure Blob Storage incurs minor costs for data retention.
+
+Pricing changes over time. Check the [Azure Pricing Calculator](https://azure.microsoft.com/en-us/pricing/calculator/) for the latest metrics, and configure manual Azure budget alerts in your subscription portal to prevent overages.
+
 ## Scripts & Validation
 
 * `task smoke` - Validates full component topology and API/OCR communication.
 * `task smoke:fast-api` - Test text-only API performance.
 * `task smoke:async-analysis` - Validates the full async image OCR flow using the accurate local provider.
+* `task azure:smoke` - Verifies the deployed Azure endpoints and checks `azure_vision` OCR extraction.

@@ -61,7 +61,7 @@ A FastAPI service that handles the raw image processing.
 
 ## Azure Target Architecture (Phase 10+)
 To improve speed and quality while remaining cost-effective, BARREL has pivoted to support Azure deployment:
-- **Infrastructure**: Terraform/Terragrunt handles provisioning (`infra/terraform/dev`).
+- **Infrastructure**: OpenTofu + Terragrunt handles provisioning (`infra/opentofu/dev`).
 - **Compute**: Azure Container Apps run the Go API and React Web frontend.
 - **OCR**: Azure Computer Vision is integrated as the primary, high-speed, high-quality OCR provider via the Go API `ocr/providers` package.
 - **Local Fallback**: PaddleOCR remains as the accurate offline/local fallback.

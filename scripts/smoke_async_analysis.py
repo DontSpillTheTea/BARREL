@@ -25,11 +25,13 @@ def main():
     print("Running async OCR smoke test...")
     wait_for_ready()
 
+    requested_provider = os.environ.get("OCR_PROVIDER", "paddleocr")
+
     # 1. Submit async job
     with open(SAMPLE_IMAGE, "rb") as f:
         files = {"file": f}
         data = {
-            "ocr_provider": "paddleocr",
+            "ocr_provider": requested_provider,
             "beverage_type": "distilled_spirits",
         }
         start_time = time.time()
@@ -90,8 +92,8 @@ def main():
     provider = ocr_result.get("selected_provider")
     text = ocr_result.get("text", "")
     
-    if provider != "paddleocr":
-        print(f"FAILED: Selected provider was {provider}, expected paddleocr")
+    if provider != requested_provider:
+        print(f"FAILED: Selected provider was {provider}, expected {requested_provider}")
         sys.exit(1)
         
     if len(text) < 100:

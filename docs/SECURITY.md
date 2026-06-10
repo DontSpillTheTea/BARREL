@@ -20,15 +20,15 @@
 - **Upload size limits**: Hard limits on file sizes (e.g. 25MB).
 - **MIME/extension allowlists**: Only specific image/zip formats are permitted.
 
-## AI Escalation
-AI escalation is metadata-only for now. No external AI calls are made. Floci-AZ remains future/optional.
-
-## Current Status & Endpoints
-
-- Local CORS is enabled for the Vite dev dashboard to communicate with the API.
-- Web dashboard is at `http://localhost:5173`.
-- API is at `http://localhost:8080`.
-- OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
-- AI escalation is metadata-only (no actual AI provider is called in the current prototype).
-- Batch upload remains a future feature.
+## Azure Target Architecture Posture (Phase 10+)
+When deployed to Azure via OpenTofu/Terragrunt:
+- **Public HTTPS only**: The API and Web UI are only accessible via HTTPS.
+- **Authentication**: Evaluator login/token is provided as a demo tradeoff to protect the API.
+- **No public signup**: The authentication system uses a single configured demo account to prevent public signups.
+- **Secrets Management**: Azure Vision keys and `BARREL_REVIEW_TOKEN` remain server-side and are injected into the Container App as secrets from OpenTofu or Key Vault.
+- **Azure Vision Access**: The backend API uses Azure Vision to perform OCR. The backend sends the image directly; Azure Vision receives uploaded label images.
+- **Data Retention**: Review history, including images, expected JSON, OCR extractions, and Reviewer Decisions, are saved to Azure Blob Storage to form the evidence logger.
+- **Business Sensitivity**: Raw OCR/image artifacts stored in Blob Storage may contain business-sensitive information.
+- **CORS**: A CORS allowlist must restrict cross-origin requests to only known domains (e.g. the frontend app domain).
+- **No general LLM calls yet**: We are using Azure Computer Vision OCR. General AI/LLM escalation remains disabled.
+- **Cleanup**: The `task azure:infra:destroy` command exists to clean up all deployed Azure resources and avoid rogue consumption.
