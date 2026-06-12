@@ -1,10 +1,17 @@
+volumes:
+  floci-data:
+
 services:
   floci-az:
     image: floci/floci-az:latest
     ports:
       - "4577:4577"
+    environment:
+      FLOCI_AZ_STORAGE_MODE: hybrid
+      FLOCI_AZ_STORAGE_PATH: /app/data
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+      - floci-data:/app/data
 
   api:
     build:
