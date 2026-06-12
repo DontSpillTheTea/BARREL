@@ -8,8 +8,8 @@ BARREL is an AI-assisted beverage alcohol label verification prototype for TTB c
 
 | | URL |
 |---|---|
-| **Web App** | https://barrel-web.mangodune-45281216.swedencentral.azurecontainerapps.io |
-| **API** | https://barrel-api.mangodune-45281216.swedencentral.azurecontainerapps.io |
+| **Web App** | https://barrel-web.redsmoke-1d6eaae6.eastus2.azurecontainerapps.io |
+| **API** | https://barrel-api.redsmoke-1d6eaae6.eastus2.azurecontainerapps.io |
 | **Login** | Username: `evaluator` / Password: `fallback-demo-password-123` |
 
 If login fails, clear your browser's localStorage (`BARREL_REVIEW_TOKEN`) and retry.
@@ -90,8 +90,8 @@ task web          # Terminal 2: React frontend
 |-------|-----------|
 | Frontend | React 19, Vite 8 |
 | Backend | Go (net/http, no framework) |
-| AI Vision | Azure OpenAI gpt-4.1-mini (Sweden Central) |
-| OCR | Azure Vision OCR (Sweden Central) |
+| AI Vision | Azure OpenAI gpt-4.1-mini (East US 2) |
+| OCR | Azure Vision OCR (East US 2) |
 | Text Parser | Azure OpenAI gpt-4.1-mini (text-only, no image tokens) |
 | Storage | Azure Blob Storage (cloud) / local filesystem (dev) |
 | Infrastructure | Azure Container Apps, ACR, Key Vault, OpenTofu + Terragrunt |
@@ -116,7 +116,7 @@ Producer/bottler and country of origin are optional fields and do not trigger es
 | Azure Vision OCR | `barrel-vision-dev-*.cognitiveservices.azure.com` | Label images for text extraction |
 | Azure Blob Storage | `barrelsadev.blob.core.windows.net` | Review evidence (images, results, decisions) |
 
-All services are in Azure Sweden Central. No other outbound domains are required.
+All services are in Azure East US 2. No other outbound domains are required.
 
 ## Data Handling
 

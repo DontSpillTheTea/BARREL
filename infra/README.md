@@ -20,31 +20,31 @@ The IaC references two Azure AI resources that must exist **before** running `ap
 
 | Resource | Type | Purpose |
 |----------|------|---------|
-| `barrel-openai-sweden` | Azure OpenAI | AI vision + text parser (gpt-4.1-mini) |
-| `barrel-vision-dev` | Computer Vision | OCR text extraction |
+| `barrel-openai-eastus2` | Azure OpenAI | AI vision + text parser (gpt-4.1-mini) |
+| `barrel-vision-eastus2` | Computer Vision | OCR text extraction |
 
 Create them if they don't exist:
 ```bash
 # Azure OpenAI (choose a region with gpt-4.1-mini quota)
 az cognitiveservices account create \
-  --name barrel-openai-sweden \
-  --resource-group barrel-ai-rg \
+  --name barrel-openai-eastus2 \
+  --resource-group barrel-rg-eastus2 \
   --kind OpenAI --sku S0 \
-  --location swedencentral --yes
+  --location eastus2 --yes
 
 az cognitiveservices account deployment create \
-  --name barrel-openai-sweden \
-  --resource-group barrel-ai-rg \
+  --name barrel-openai-eastus2 \
+  --resource-group barrel-rg-eastus2 \
   --deployment-name barrel-ai-native-parser \
   --model-name gpt-4.1-mini --model-version "2025-04-14" \
   --model-format OpenAI --sku-capacity 50 --sku-name GlobalStandard
 
 # Azure Vision OCR
 az cognitiveservices account create \
-  --name barrel-vision-dev \
-  --resource-group barrel-ai-rg \
+  --name barrel-vision-eastus2 \
+  --resource-group barrel-rg-eastus2 \
   --kind ComputerVision --sku F0 \
-  --location swedencentral --yes
+  --location eastus2 --yes
 ```
 
 ## Azure Provider Registration
@@ -72,7 +72,7 @@ Set these before deploying (or rely on defaults in `terragrunt.hcl`):
 Get the Vision key:
 ```bash
 export AZURE_VISION_KEY=$(az cognitiveservices account keys list \
-  --name barrel-vision-dev --resource-group barrel-ai-rg \
+  --name barrel-vision-eastus2 --resource-group barrel-rg-eastus2 \
   --query "key1" -o tsv)
 ```
 
@@ -107,11 +107,11 @@ task azure:outputs
 |----------|-------------|---------|
 | Container App (API) | `barrel-api` | Go backend on port 8080 |
 | Container App (Web) | `barrel-web` | React frontend on port 5173 |
-| Container Registry | `barrelacrdev` | Docker image storage |
-| Storage Account | `barrelsadev` | Blob + Table storage |
+| Container Registry | `barrelacrus2` | Docker image storage |
+| Storage Account | `barrelsaus2` | Blob + Table storage |
 | Blob Container | `jobs` | Label images, results, decisions |
 | Table Storage | `reviews` | Review metadata for fast listing |
-| Key Vault | `barrel-kv-dev` | Secret storage |
+| Key Vault | `barrel-kv-us2` | Secret storage |
 | Log Analytics | `barrel-law` | Container logs |
 | Managed Identity | `barrel-api-id` | API → Key Vault access |
 
@@ -141,11 +141,11 @@ This destroys all IaC-managed resources. The pre-existing OpenAI and Vision reso
 
 **"Provider not registered"**: Run `az provider register -n Microsoft.App --wait`
 
-**"Insufficient quota"**: Check model availability in your region. gpt-4.1-mini may not be available in all regions. Try `swedencentral`, `eastus2`, or `westus`.
+**"Insufficient quota"**: Check model availability in your region. gpt-4.1-mini may not be available in all regions. Try `eastus2`, `eastus2`, or `westus`.
 
 **"State lock"**: Another Terragrunt process is running. Wait for it to finish or remove the lock file in `.terragrunt-cache/`.
 
-**Container App not starting**: Check logs with `az containerapp logs show -n barrel-api -g barrel-ai-rg --tail 20`
+**Container App not starting**: Check logs with `az containerapp logs show -n barrel-api -g barrel-rg-eastus2 --tail 20`
 
 **Build fails with Go version mismatch**: The API Dockerfile uses `golang:1.25-alpine`. Ensure your go.mod matches.
 

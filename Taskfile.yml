@@ -197,11 +197,11 @@ tasks:
     desc: Build images for Azure Container Registry
     vars:
       ACR_SERVER:
-        sh: az acr list -g barrel-ai-rg --query "[0].loginServer" -o tsv
+        sh: az acr list -g barrel-rg-eastus2 --query "[0].loginServer" -o tsv
       TAG:
         sh: git rev-parse --short HEAD || echo "latest"
       API_FQDN:
-        sh: az containerapp show -n barrel-api -g barrel-ai-rg --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "barrel-api.placeholder.azurecontainerapps.io"
+        sh: az containerapp show -n barrel-api -g barrel-rg-eastus2 --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "barrel-api.placeholder.azurecontainerapps.io"
     cmds:
       - echo "Building API image..."
       - docker build --platform linux/amd64 -t {{.ACR_SERVER}}/barrel-api:{{.TAG}} -f apps/api/Dockerfile .
@@ -212,15 +212,15 @@ tasks:
     desc: Push images to Azure Container Registry and update Container Apps
     vars:
       ACR_SERVER:
-        sh: az acr list -g barrel-ai-rg --query "[0].loginServer" -o tsv
+        sh: az acr list -g barrel-rg-eastus2 --query "[0].loginServer" -o tsv
       TAG:
         sh: git rev-parse --short HEAD || echo "latest"
     cmds:
       - az acr login --name {{.ACR_SERVER}}
       - docker push {{.ACR_SERVER}}/barrel-api:{{.TAG}}
       - docker push {{.ACR_SERVER}}/barrel-web:{{.TAG}}
-      - az containerapp update -n barrel-api -g barrel-ai-rg --image {{.ACR_SERVER}}/barrel-api:{{.TAG}}
-      - az containerapp update -n barrel-web -g barrel-ai-rg --image {{.ACR_SERVER}}/barrel-web:{{.TAG}}
+      - az containerapp update -n barrel-api -g barrel-rg-eastus2 --image {{.ACR_SERVER}}/barrel-api:{{.TAG}}
+      - az containerapp update -n barrel-web -g barrel-rg-eastus2 --image {{.ACR_SERVER}}/barrel-web:{{.TAG}}
 
   smoke:local-ai:
     desc: Run AI Native provider tests locally
