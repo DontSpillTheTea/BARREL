@@ -3,36 +3,45 @@ package ocr
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/ocr/providers"
 )
 
 type Manager struct {
-	primary  providers.Provider
-	fallback providers.Provider
-	mock     providers.Provider
+	primary     providers.Provider
+	fallback    providers.Provider
+	mock        providers.Provider
+	mockGeneric providers.Provider
+	useMock     bool
 }
 
 func NewManager(workerURL string) *Manager {
 	m := &Manager{}
-	
+
 	m.mock = providers.NewMockFastProvider()
+	m.mockGeneric = providers.NewMockGenericProvider()
 	m.fallback = providers.NewPaddleWorkerProvider(workerURL)
-	
-	if az, err := providers.NewAzureVisionProvider(); err == nil {
+
+	if os.Getenv("BARREL_OCR_MOCK") == "true" {
+		m.useMock = true
+		log.Println("OCR mock mode enabled — using generic mock provider for all requests.")
+	} else if az, err := providers.NewAzureVisionProvider(); err == nil {
 		log.Println("Azure Vision OCR provider configured successfully.")
 		m.primary = az
 	} else {
 		log.Printf("Azure Vision not configured: %v", err)
 	}
-	
+
 	return m
 }
 
 func (m *Manager) Extract(ctx context.Context, input providers.ExtractInput, requestedProvider string) (*providers.OCRResult, error) {
-	// 1. If explicit provider requested (e.g. mock_fast, paddleocr_worker)
 	if requestedProvider == "mock_fast" {
 		return m.mock.Extract(ctx, input)
+	}
+	if requestedProvider == "mock_generic" || m.useMock {
+		return m.mockGeneric.Extract(ctx, input)
 	}
 	if requestedProvider == "paddleocr_worker" {
 		return m.fallback.Extract(ctx, input)
@@ -41,7 +50,6 @@ func (m *Manager) Extract(ctx context.Context, input providers.ExtractInput, req
 		return m.primary.Extract(ctx, input)
 	}
 
-	// 2. Default logic: Try Azure first if available
 	if m.primary != nil {
 		res, err := m.primary.Extract(ctx, input)
 		if err == nil {
@@ -50,7 +58,6 @@ func (m *Manager) Extract(ctx context.Context, input providers.ExtractInput, req
 		log.Printf("Azure Vision failed: %v, attempting fallback...", err)
 	}
 
-	// 3. Fallback to local
 	return m.fallback.Extract(ctx, input)
 }
 

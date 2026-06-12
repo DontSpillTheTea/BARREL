@@ -1,0 +1,42 @@
+services:
+  floci-az:
+    image: floci/floci-az:latest
+    ports:
+      - "4577:4577"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: 8080
+      RULESET_PATH: /rules/ttb
+      MAX_UPLOAD_MB: 25
+      STORAGE_PROVIDER: azure_blob
+      AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMh0==;BlobEndpoint=http://floci-az:4577/devstoreaccount1;TableEndpoint=http://floci-az:4577/devstoreaccount1-table"
+      AZURE_STORAGE_CONTAINER: jobs
+      AZURE_STORAGE_TABLE: reviews
+      BARREL_ANALYSIS_PROVIDER: tiered
+      BARREL_OCR_MOCK: "true"
+      BARREL_DEMO_USERNAME: evaluator
+      BARREL_DEMO_PASSWORD: offline-demo-password
+      BARREL_REVIEW_TOKEN: offline-review-token
+    depends_on:
+      - floci-az
+    volumes:
+      - ./rules:/rules:ro
+    command: ["go", "run", "./cmd/server"]
+
+  web:
+    build:
+      context: apps/web
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - api

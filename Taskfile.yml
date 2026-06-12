@@ -53,6 +53,21 @@ tasks:
         test "${AZURE_OPENAI_API_KEY}" != "dummy" || (echo "AZURE_OPENAI_API_KEY is still set to dummy in .env" && exit 1)
         STORAGE_PROVIDER=local BARREL_STORAGE_DIR=/tmp/barrel_storage_local AI_NATIVE_ENABLED=true AZURE_OPENAI_DEPLOYMENT=barrel-ai-native-parser AZURE_OPENAI_API_VERSION=2025-01-01-preview docker compose up -d --build api web
 
+  up:offline:
+    desc: Run fully offline stack with floci-az (no Azure account needed)
+    cmds:
+      - docker compose -f docker-compose.offline.yml up -d --build
+
+  down:offline:
+    desc: Stop the offline stack
+    cmds:
+      - docker compose -f docker-compose.offline.yml down
+
+  logs:offline:
+    desc: Follow logs for the offline stack
+    cmds:
+      - docker compose -f docker-compose.offline.yml logs -f
+
   down:
     desc: Stop the full stack
     cmds:

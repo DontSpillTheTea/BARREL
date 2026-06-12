@@ -47,11 +47,27 @@ func NewAzureBlobProvider() *AzureBlobProvider {
 	}
 	p.blobClient = blobClient
 
+	// Auto-create blob container if it doesn't exist (needed for floci-az / fresh environments)
+	ctx := context.Background()
+	if _, err := blobClient.CreateContainer(ctx, container, nil); err != nil {
+		log.Printf("Blob container '%s' already exists or create skipped: %v", container, err)
+	} else {
+		log.Printf("Created blob container: %s", container)
+	}
+
 	serviceClient, err := aztables.NewServiceClientFromConnectionString(connStr, nil)
 	if err != nil {
 		log.Printf("WARNING: Failed to create table client: %v", err)
 	} else {
 		p.tableClient = serviceClient.NewClient(tableName)
+
+		// Auto-create table if it doesn't exist
+		if _, err := serviceClient.CreateTable(ctx, tableName, nil); err != nil {
+			log.Printf("Table '%s' already exists or create skipped: %v", tableName, err)
+		} else {
+			log.Printf("Created table: %s", tableName)
+		}
+
 		log.Printf("Azure Table Storage configured (table: %s)", tableName)
 	}
 
