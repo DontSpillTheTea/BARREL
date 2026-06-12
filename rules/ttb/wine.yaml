@@ -50,3 +50,27 @@ rules:
     check_type: "pattern_match"
     severity: "high"
     explanation: "Must use authorized standards of fill."
+
+  - id: wine_producer_bottler
+    requirement: "Name and address of the bottler, packer, or importer must appear."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.40
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4/subpart-D/section-4.40"
+    check_type: "presence"
+    severity: "high"
+    explanation: "The name and address of the bottler or packer must be shown on the label."
+
+  - id: wine_country_of_origin
+    requirement: "Country of origin required for imported wine."
+    beverage_types: ["wine"]
+    cfr:
+      title: 27
+      part: 4
+      section: 4.41
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-4/subpart-D/section-4.41"
+    check_type: "presence"
+    severity: "high"
+    explanation: "Imported wine must show country of origin on the label."

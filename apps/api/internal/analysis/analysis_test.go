@@ -24,7 +24,7 @@ func TestAnalyzeText(t *testing.T) {
 
 	res := AnalyzeText(input, catalog, nil)
 
-	if res.OverallStatus != "Pass" {
+	if res.OverallStatus != models.StatusMatch {
 		t.Errorf("Expected Pass, got %s", res.OverallStatus)
 	}
 	if res.OverallConfidence < 85 {
@@ -35,7 +35,7 @@ func TestAnalyzeText(t *testing.T) {
 	for _, f := range res.Fields {
 		if f.Field == "Brand Name" {
 			foundBrand = true
-			if f.Status != "Pass" {
+			if f.Status != models.StatusMatch {
 				t.Errorf("Expected Brand Name to pass, got %s", f.Status)
 			}
 		}

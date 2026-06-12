@@ -50,3 +50,27 @@ rules:
     check_type: "pattern_match"
     severity: "high"
     explanation: "Must use authorized metric standards of fill."
+
+  - id: spirits_producer_bottler
+    requirement: "Name and address of the distiller, bottler, or importer must appear on the label."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.66
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5/subpart-I/section-5.66"
+    check_type: "presence"
+    severity: "high"
+    explanation: "The name and address of the bottler, distiller, or importer must appear on the label."
+
+  - id: spirits_country_of_origin
+    requirement: "Country of origin must be stated for imported spirits."
+    beverage_types: ["distilled_spirits"]
+    cfr:
+      title: 27
+      part: 5
+      section: 5.75
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-5/subpart-I/section-5.75"
+    check_type: "presence"
+    severity: "high"
+    explanation: "Imported spirits must show country of origin on the label."

@@ -33,8 +33,8 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 		OCRText:        input.Text,
 		OCR:            ocrMetadata,
 		ExpectedFields: input.ExpectedFields,
-		OverallStatus:  "Pass",
-		Warnings:      []string{},
+		OverallStatus:  models.StatusMatch,
+		Warnings:       []string{},
 		AISecondRead: &models.AISecondRead{
 			Eligible: false,
 			Used:     false,
@@ -56,11 +56,11 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 
 	// 1. Brand Name
 	brandFound := ""
-	brandStatus := "Likely Fail"
+	brandStatus := models.StatusMissingOnLabel
 	brandConf := 0
 	if validators.FuzzyContains(input.Text, input.ExpectedFields.BrandName) {
 		brandFound = input.ExpectedFields.BrandName
-		brandStatus = "Pass"
+		brandStatus = models.StatusMatch
 		brandConf = 95
 	} else if input.ExpectedFields.BrandName != "" {
 		brandFound = "Not found"
@@ -80,11 +80,11 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 
 	// 2. Class/Type
 	classFound := ""
-	classStatus := "Likely Fail"
+	classStatus := models.StatusMissingOnLabel
 	classConf := 0
 	if validators.FuzzyContains(input.Text, input.ExpectedFields.ClassType) {
 		classFound = input.ExpectedFields.ClassType
-		classStatus = "Pass"
+		classStatus = models.StatusMatch
 		classConf = 95
 	} else if input.ExpectedFields.ClassType != "" {
 		classFound = "Not found"
@@ -112,11 +112,11 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 			alcFoundStr = extractedProof
 		}
 	}
-	alcStatus := "Likely Fail"
+	alcStatus := models.StatusMissingOnLabel
 	alcConf := 40
 	if validators.FuzzyContains(alcFoundStr, input.ExpectedFields.AlcoholContent) || validators.FuzzyContains(input.ExpectedFields.AlcoholContent, extractedABV) {
 		if alcFoundStr != "" {
-			alcStatus = "Pass"
+			alcStatus = models.StatusMatch
 			alcConf = 95
 		}
 	}
@@ -137,10 +137,10 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 
 	// 4. Net Contents
 	netContFound := validators.ExtractNetContents(input.Text)
-	netStatus := "Likely Fail"
+	netStatus := models.StatusMissingOnLabel
 	netConf := 40
 	if (validators.FuzzyContains(netContFound, input.ExpectedFields.NetContents) || validators.FuzzyContains(input.ExpectedFields.NetContents, netContFound)) && netContFound != "" {
-		netStatus = "Pass"
+		netStatus = models.StatusMatch
 		netConf = 95
 	}
 	if netContFound == "" {
@@ -157,65 +157,83 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 		Rule:        getRule(catalog, prefix+"net_contents"),
 	})
 
-	// 5. Government Warning
+	// 5. Government Warning - strict verbatim check
 	govWarningFound, exactCase := validators.ExtractGovernmentWarning(normText)
-	govStatus := "Likely Fail"
-	govConf := 95
+	govStatus := models.StatusMissingOnLabel
+	govConf := 40
 	govFoundStr := "Not found"
-	govExpStr := "Present and exact case"
+	govExpStr := "Present and verbatim match required"
+	var govDiff *models.GovWarningComparison
 
 	if input.ExpectedFields.GovernmentWarningPresent {
 		if govWarningFound {
-			if exactCase {
-				govStatus = "Pass"
-				govFoundStr = "Present (Exact Case)"
-				govConf = 100
+			fullText := validators.ExtractGovernmentWarningText(normText)
+			if fullText != "" {
+				comparison := validators.CompareGovernmentWarningVerbatim(fullText)
+				govDiff = &comparison
+				if comparison.IsExactMatch {
+					govStatus = models.StatusMatch
+					govFoundStr = "Present (exact match)"
+					govConf = 100
+				} else if !exactCase {
+					govStatus = models.StatusMismatch
+					govFoundStr = "Present (incorrect case)"
+					govConf = 75
+					res.Warnings = append(res.Warnings, "Government warning heading case mismatch. GOVERNMENT WARNING: must be all caps.")
+				} else if comparison.Similarity < 0.6 {
+					govStatus = models.StatusMismatch
+					govFoundStr = "Present (text does not match statute)"
+					govConf = 80
+					res.Warnings = append(res.Warnings, "Government warning text has very low similarity to statutory requirement.")
+				} else {
+					govStatus = models.StatusMismatch
+					govFoundStr = "Present (text differs from statute)"
+					govConf = 85
+				}
 			} else {
-				govStatus = "Needs Review"
-				govFoundStr = "Present (Incorrect Case)"
-				res.Warnings = append(res.Warnings, "Government warning heading case mismatch.")
-				govConf = 75
+				govStatus = models.StatusUncertain
+				govFoundStr = "Heading found, full text unreadable"
+				govConf = 60
 			}
-		} else {
-			govConf = 40
 		}
 	} else {
 		govExpStr = "Not required"
 		if govWarningFound {
 			govFoundStr = "Present"
-			govStatus = "Needs Review"
+			govStatus = models.StatusUncertain
 			govConf = 75
 		} else {
 			govFoundStr = "Not present"
-			govStatus = "Pass"
+			govStatus = models.StatusMatch
 			govConf = 100
 		}
 	}
 
 	res.ExtractedFields.GovernmentWarningFound = govWarningFound
 	res.Fields = append(res.Fields, models.FieldCheckResult{
-		Field:       "Government Warning",
-		Expected:    govExpStr,
-		Found:       govFoundStr,
-		Status:      govStatus,
-		Confidence:  govConf,
-		Explanation: "Checked for exact uppercase heading and presence.",
-		Rule:        getRule(catalog, "health_warning_statement"),
+		Field:          "Government Warning",
+		Expected:       govExpStr,
+		Found:          govFoundStr,
+		Status:         govStatus,
+		Confidence:     govConf,
+		Explanation:    "Checked for exact uppercase heading and verbatim statutory text.",
+		Rule:           getRule(catalog, "health_warning_statement"),
+		GovWarningDiff: govDiff,
 	})
 
 	// Overall Status & Confidence
 	totalConf := 0
-	hasMissingOrAmbiguous := false
+	hasMissingOrMismatch := false
 	for _, f := range res.Fields {
 		totalConf += f.Confidence
-		if f.Status == "Likely Fail" {
-			res.OverallStatus = "Likely Fail"
-			hasMissingOrAmbiguous = true
-		} else if f.Status == "Needs Review" {
-			if res.OverallStatus != "Likely Fail" {
-				res.OverallStatus = "Needs Review"
+		if f.Status == models.StatusMismatch || f.Status == models.StatusMissingOnLabel {
+			res.OverallStatus = models.StatusMismatch
+			hasMissingOrMismatch = true
+		} else if f.Status == models.StatusUncertain {
+			if res.OverallStatus != models.StatusMismatch {
+				res.OverallStatus = models.StatusUncertain
 			}
-			hasMissingOrAmbiguous = true
+			hasMissingOrMismatch = true
 		}
 	}
 	if len(res.Fields) > 0 {
@@ -226,30 +244,17 @@ func AnalyzeText(input models.AnalysisInput, catalog *rules.Catalog, ocrMetadata
 		res.OverallConfidence = int(float64(res.OverallConfidence)*0.5 + ocrMetadata.MeanConfidence*0.5)
 	}
 
-	// Eligibility logic for AI Second Read
-	isOcrPoor := false
-	if res.OverallConfidence < 85 {
-		isOcrPoor = true
-	}
-
-	// dense text / high OCR text volume but missing key fields
-	isDenseText := len(input.Text) > 400 && hasMissingOrAmbiguous
-
-	// Warning detected but not exact case
-	warningNotExact := res.ExtractedFields.GovernmentWarningFound && govStatus == "Needs Review"
-
-	// Typo candidate
+	// Eligibility logic for escalating OCR-only runs to the AI-native parser.
+	isOcrPoor := res.OverallConfidence < 85
+	isDenseText := len(input.Text) > 400 && hasMissingOrMismatch
 	hasWarningTypo := validators.FuzzyContains(normText, "GOVERMENT") || validators.FuzzyContains(normText, "Surgon") || validators.FuzzyContains(normText, "pregancy")
 
-	if res.OverallStatus != "Pass" {
+	if res.OverallStatus != models.StatusMatch {
 		res.AISecondRead.Eligible = true
-		res.AISecondRead.Reason = "Overall status is not Pass."
-	} else if hasMissingOrAmbiguous {
+		res.AISecondRead.Reason = "Overall status is not Match."
+	} else if hasMissingOrMismatch {
 		res.AISecondRead.Eligible = true
 		res.AISecondRead.Reason = "Required fields remained missing after local OCR."
-	} else if warningNotExact {
-		res.AISecondRead.Eligible = true
-		res.AISecondRead.Reason = "Government warning detected but case is not exact."
 	} else if hasWarningTypo {
 		res.AISecondRead.Eligible = true
 		res.AISecondRead.Reason = "Suspicious typos detected in Government Warning."

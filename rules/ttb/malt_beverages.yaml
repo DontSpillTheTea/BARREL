@@ -38,3 +38,15 @@ rules:
     check_type: "pattern_match"
     severity: "high"
     explanation: "Usually stated in fluid ounces, pints, and quarts."
+
+  - id: malt_alcohol_content
+    requirement: "Alcohol content must be stated unless exempted by state law."
+    beverage_types: ["malt_beverages"]
+    cfr:
+      title: 27
+      part: 7
+      section: 7.71
+    source_url: "https://www.ecfr.gov/current/title-27/chapter-I/subchapter-A/part-7/subpart-I/section-7.71"
+    check_type: "pattern_match"
+    severity: "high"
+    explanation: "Malt beverages must state alcohol content by volume unless exempt."
