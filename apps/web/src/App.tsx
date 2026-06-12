@@ -1,7 +1,104 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type FormEvent, type ChangeEvent, type ReactNode } from 'react'
 import './App.css'
 
-const STATUS_BADGE = {
+interface GovWarningDiff {
+  is_exact_match: boolean
+  extracted_text: string
+  canonical_text: string
+  similarity: number
+}
+
+interface RuleBreadcrumb {
+  id: string
+  citation: string
+  source_url: string
+}
+
+interface FieldCheckResult {
+  field: string
+  expected: string | boolean | null
+  found: string | boolean | null
+  status: string
+  confidence: number
+  similarity: number
+  ai_confidence: number
+  ocr_confidence: number
+  parser_confidence: number
+  source: string
+  explanation: string
+  rule: RuleBreadcrumb
+  gov_warning_diff?: GovWarningDiff
+}
+
+interface PipelineTimings {
+  ocr_time_ms: number
+  text_parse_time_ms: number
+  validation_time_ms: number
+  ai_native_time_ms: number
+  total_time_ms: number
+}
+
+interface AnalysisResult {
+  filename: string
+  requested_provider: string
+  beverage_type: string
+  overall_status: string
+  overall_confidence: number
+  processing_time_ms: number
+  provider_path: string
+  escalated: boolean
+  escalation_reasons: string[]
+  timings?: PipelineTimings
+  fields: FieldCheckResult[]
+  image_quality_flags?: string[]
+  warnings?: string[]
+  ocr_text?: string
+}
+
+interface ReviewSummary {
+  id: string
+  job_id: string
+  filename: string
+  submitted_at: string
+  completed_at?: string
+  provider_requested?: string
+  provider_used: string
+  overall_status: string
+  overall_confidence: number
+  field_pass_count: number
+  field_total_count: number
+  reviewer_decision?: string
+  beverage_type: string
+  brand_name?: string
+  class_type?: string
+  alcohol_content?: string
+  net_contents?: string
+}
+
+interface ReviewDetail {
+  summary: ReviewSummary
+  result: AnalysisResult | null
+  original_image_url?: string
+  raw_ocr_text?: string
+}
+
+interface BatchJob {
+  job_id: string
+  filename: string
+}
+
+interface ExpectedFields {
+  brand_name: string
+  class_type: string
+  alcohol_content: string
+  net_contents: string
+  government_warning_present: boolean
+  producer_bottler: string
+  country_of_origin: string
+  beverage_type: string
+}
+
+const STATUS_BADGE: Record<string, string> = {
   'Match': 'badge-success',
   'Mismatch': 'badge-error',
   'Missing on Label': 'badge-error',
@@ -14,6 +111,12 @@ const STATUS_BADGE = {
 
 const OVERALL_MATCH = ['Match', 'Pass']
 
+const PROVIDER_PATH_LABELS: Record<string, { label: string; cls: string }> = {
+  'ocr_only': { label: 'OCR Fast Path', cls: 'badge-success' },
+  'ocr_then_ai_native': { label: 'OCR + AI Vision', cls: 'badge-info' },
+  'ai_native_only': { label: 'AI Native', cls: 'badge-warning' },
+}
+
 function App() {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
   const buildSha = import.meta.env.VITE_BUILD_SHA || 'dev'
@@ -21,14 +124,14 @@ function App() {
   const [reviewToken, setReviewToken] = useState(localStorage.getItem('BARREL_REVIEW_TOKEN') || '')
   useEffect(() => { localStorage.setItem('BARREL_REVIEW_TOKEN', reviewToken) }, [reviewToken])
 
-  const getHeaders = (extra = {}) => {
+  const getHeaders = (extra: Record<string, string> = {}): Record<string, string> => {
     const h = { ...extra }
     if (reviewToken) h['X-BARREL-REVIEW-TOKEN'] = reviewToken
     return h
   }
 
-  const [history, setHistory] = useState([])
-  const [batchJobs, setBatchJobs] = useState([])
+  const [history, setHistory] = useState<ReviewSummary[]>([])
+  const [batchJobs, setBatchJobs] = useState<BatchJob[]>([])
 
   const fetchHistory = async () => {
     try {
@@ -40,7 +143,6 @@ function App() {
     } catch (e) { console.error('Failed to fetch history', e) }
   }
 
-  // Auth
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loginUsername, setLoginUsername] = useState('evaluator')
@@ -63,7 +165,7 @@ function App() {
 
   useEffect(() => { if (isAuthenticated) fetchHistory() }, [isAuthenticated, apiBaseUrl, reviewToken])
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault()
     setLoginError('')
     try {
@@ -71,11 +173,11 @@ function App() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUsername, password: loginPassword })
       })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Login failed') }
+      if (!res.ok) { const d = await res.json().catch(() => ({} as Record<string, string>)); throw new Error(d.error || 'Login failed') }
       const data = await res.json()
       setReviewToken(data.token)
       setIsAuthenticated(true)
-    } catch (err) { setLoginError(err.message) }
+    } catch (err) { setLoginError((err as Error).message) }
   }
 
   const handleLogout = async () => {
@@ -84,40 +186,40 @@ function App() {
     setIsAuthenticated(false)
   }
 
-  // Form state
-  const [file, setFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState(null)
-  const [jobId, setJobId] = useState(null)
+  const [result, setResult] = useState<ReviewDetail | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [jobId, setJobId] = useState<string | null>(null)
   const [decisionNotes, setDecisionNotes] = useState('')
   const [showExpectedFields, setShowExpectedFields] = useState(false)
   const [expandedGovWarning, setExpandedGovWarning] = useState(false)
 
-  const [expectedFields, setExpectedFields] = useState({
+  const [expectedFields, setExpectedFields] = useState<ExpectedFields>({
     brand_name: '', class_type: '', alcohol_content: '', net_contents: '',
     government_warning_present: true, producer_bottler: '', country_of_origin: '',
     beverage_type: 'distilled_spirits',
   })
 
-  const updateExpected = (key, val) => setExpectedFields(prev => ({ ...prev, [key]: val }))
+  const updateExpected = (key: keyof ExpectedFields, val: string | boolean) =>
+    setExpectedFields(prev => ({ ...prev, [key]: val }))
 
-  const handleFileChange = (e) => {
-    const f = e.target.files[0]
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null
     setFile(f)
     if (f) { setImagePreview(URL.createObjectURL(f)); setResult(null); setError(null); setJobId(null) }
     else setImagePreview(null)
   }
 
-  const pollJobStatus = async (pollUrl, controller) => {
+  const pollJobStatus = async (pollUrl: string, controller: AbortController): Promise<AnalysisResult> => {
     const start = Date.now()
     while (Date.now() - start < 90000) {
       if (controller.signal.aborted) throw new Error('AbortError')
       const res = await fetch(`${apiBaseUrl}${pollUrl}`, { headers: getHeaders() })
       if (!res.ok) {
         if (res.status === 404) { await new Promise(r => setTimeout(r, 2000)); continue }
-        const d = await res.json().catch(() => ({}))
+        const d = await res.json().catch(() => ({} as Record<string, string>))
         throw new Error(d.error || `HTTP error ${res.status}`)
       }
       const data = await res.json()
@@ -129,14 +231,13 @@ function App() {
     throw new Error('Analysis timed out (90s limit)')
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (!file) { setError('Please select a label image first.'); return }
     setLoading(true); setError(null); setResult(null); setJobId(null); setDecisionNotes('')
 
     const formData = new FormData()
     formData.append('file', file)
-    // Let server decide provider based on BARREL_ANALYSIS_PROVIDER config
     formData.append('beverage_type', expectedFields.beverage_type)
     formData.append('expected_json', JSON.stringify({
       brand_name: expectedFields.brand_name,
@@ -153,7 +254,7 @@ function App() {
       const res = await fetch(`${apiBaseUrl}/api/v1/labels/analyze-async`, {
         method: 'POST', headers: getHeaders(), body: formData, signal: controller.signal
       })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`) }
+      if (!res.ok) { const d = await res.json().catch(() => ({} as Record<string, string>)); throw new Error(d.error || `HTTP ${res.status}`) }
       const initData = await res.json()
 
       if (initData.batch) {
@@ -164,33 +265,33 @@ function App() {
       } else {
         setJobId(initData.job_id)
         await pollJobStatus(initData.poll_url, controller)
-        await loadHistoricalJob({ job_id: initData.job_id })
+        await loadHistoricalJob({ job_id: initData.job_id } as ReviewSummary)
         fetchHistory()
       }
     } catch (err) {
-      if (err.message !== 'AbortError') setError(err.message || 'An unknown error occurred')
+      if ((err as Error).message !== 'AbortError') setError((err as Error).message || 'An unknown error occurred')
     } finally { setLoading(false) }
   }
 
-  const submitDecision = async (decision) => {
+  const submitDecision = async (decision: string) => {
     if (!jobId) return
     try {
       const res = await fetch(`${apiBaseUrl}/api/v1/reviews/${jobId}/decision`, {
         method: 'POST', headers: getHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ decision, notes: decisionNotes })
       })
-      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || `HTTP ${res.status}`) }
+      if (!res.ok) { const d = await res.json().catch(() => ({} as Record<string, string>)); throw new Error(d.error || `HTTP ${res.status}`) }
       alert(`Decision '${decision}' submitted.`)
       fetchHistory()
-    } catch (err) { alert(`Failed: ${err.message}`) }
+    } catch (err) { alert(`Failed: ${(err as Error).message}`) }
   }
 
-  const loadHistoricalJob = async (job) => {
+  const loadHistoricalJob = async (job: ReviewSummary) => {
     const id = job.job_id || job.id
     setJobId(id); setFile(null); setExpandedGovWarning(false)
     try {
-      let detail = null
-      let res = await fetch(`${apiBaseUrl}/api/v1/reviews/${id}`, { headers: getHeaders() })
+      let detail: ReviewDetail | null = null
+      const res = await fetch(`${apiBaseUrl}/api/v1/reviews/${id}`, { headers: getHeaders() })
       if (res.ok) {
         detail = await res.json()
       } else {
@@ -199,13 +300,15 @@ function App() {
         const jd = await jobRes.json()
         detail = {
           summary: {
-            job_id: id, filename: job.filename || jd.filename || jd.result?.filename || '',
+            id, job_id: id,
+            filename: job.filename || jd.filename || jd.result?.filename || '',
             submitted_at: job.submitted_at || jd.created_at || '',
             completed_at: job.completed_at || jd.updated_at || '',
             provider_requested: job.provider_requested || jd.result?.requested_provider || '',
             provider_used: job.provider_used || jd.result?.ai_second_read?.provider || jd.result?.requested_provider || '',
             overall_status: job.overall_status || jd.result?.overall_status || '',
             overall_confidence: job.overall_confidence || jd.result?.overall_confidence || 0,
+            field_pass_count: 0, field_total_count: 0, beverage_type: '',
           },
           result: jd.result || null,
           original_image_url: `/api/v1/reviews/${id}/image`,
@@ -214,26 +317,21 @@ function App() {
       }
       setResult(detail)
       setDecisionNotes('')
-      if (detail.original_image_url) {
+      if (detail?.original_image_url) {
         setImagePreview(`${apiBaseUrl}${detail.original_image_url}?token=${reviewToken}`)
       } else { setImagePreview(null) }
-    } catch (err) { setError(err.message || 'Failed to load detail') }
+    } catch (err) { setError((err as Error).message || 'Failed to load detail') }
   }
 
-  const PROVIDER_PATH_LABELS = {
-    'ocr_only': { label: 'OCR Fast Path', cls: 'badge-success' },
-    'ocr_then_ai_native': { label: 'OCR + AI Vision', cls: 'badge-info' },
-    'ai_native_only': { label: 'AI Native', cls: 'badge-warning' },
-  }
-
-  const renderProviderBadge = () => {
+  const renderProviderBadge = (): ReactNode => {
     const path = result?.result?.provider_path
+    if (!path) return null
     const info = PROVIDER_PATH_LABELS[path]
     if (info) return <span className={`badge ${info.cls}`}>{info.label}</span>
     return null
   }
 
-  const renderTimingBreakdown = () => {
+  const renderTimingBreakdown = (): ReactNode => {
     const t = result?.result?.timings
     const ms = t?.total_time_ms || result?.result?.processing_time_ms
     if (!ms) return null
@@ -241,50 +339,47 @@ function App() {
     const cls = ms < 5000 ? 'badge-success' : ms < 10000 ? 'badge-warning' : 'badge-error'
     let detail = ''
     if (t) {
-      const parts = []
-      if (t.ocr_time_ms) parts.push(`OCR: ${(t.ocr_time_ms/1000).toFixed(1)}s`)
-      if (t.text_parse_time_ms) parts.push(`Parse: ${(t.text_parse_time_ms/1000).toFixed(1)}s`)
-      if (t.ai_native_time_ms) parts.push(`AI: ${(t.ai_native_time_ms/1000).toFixed(1)}s`)
+      const parts: string[] = []
+      if (t.ocr_time_ms) parts.push(`OCR: ${(t.ocr_time_ms / 1000).toFixed(1)}s`)
+      if (t.text_parse_time_ms) parts.push(`Parse: ${(t.text_parse_time_ms / 1000).toFixed(1)}s`)
+      if (t.ai_native_time_ms) parts.push(`AI: ${(t.ai_native_time_ms / 1000).toFixed(1)}s`)
       if (parts.length) detail = ` (${parts.join(' | ')})`
     }
     return <span className={`badge ${cls}`} title={detail}>{sec}s{detail}</span>
   }
 
-  // Gov warning diff renderer
-  const renderGovWarningDiff = (diff) => {
-    if (!diff) return null
-    const { canonical_text, extracted_text, similarity, is_exact_match } = diff
-    if (is_exact_match) return <div className="gov-diff-detail"><span className="badge badge-success">Exact match with statutory text</span></div>
+  const renderGovWarningDiff = (diff: GovWarningDiff): ReactNode => {
+    if (diff.is_exact_match) return <div className="gov-diff-detail"><span className="badge badge-success">Exact match with statutory text</span></div>
 
-    const chars = []
-    const maxLen = Math.max(canonical_text.length, extracted_text.length)
+    const chars: ReactNode[] = []
+    const maxLen = Math.max(diff.canonical_text.length, diff.extracted_text.length)
     for (let i = 0; i < maxLen; i++) {
-      const c = canonical_text[i]
-      const e = extracted_text[i]
-      if (c === e) {
-        chars.push(<span key={i}>{c}</span>)
-      } else if (e === undefined) {
-        chars.push(<span key={i} className="diff-missing">{c}</span>)
-      } else {
-        chars.push(<span key={i} className="diff-mismatch">{e}</span>)
-      }
+      const c = diff.canonical_text[i]
+      const e = diff.extracted_text[i]
+      if (c === e) chars.push(<span key={i}>{c}</span>)
+      else if (e === undefined) chars.push(<span key={i} className="diff-missing">{c}</span>)
+      else chars.push(<span key={i} className="diff-mismatch">{e}</span>)
     }
 
     return (
       <div className="gov-diff-detail">
-        <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem' }}>
-          <strong>Similarity:</strong> {(similarity * 100).toFixed(1)}%
-        </div>
+        <div style={{ marginBottom: '0.5rem', fontSize: '0.8rem' }}><strong>Similarity:</strong> {(diff.similarity * 100).toFixed(1)}%</div>
         <div style={{ marginBottom: '0.5rem' }}>
           <strong style={{ fontSize: '0.75rem' }}>Extracted (differences highlighted):</strong>
           <div className="diff-text">{chars}</div>
         </div>
         <div>
           <strong style={{ fontSize: '0.75rem' }}>Canonical statutory text:</strong>
-          <div className="diff-text" style={{ color: 'var(--text-light)' }}>{canonical_text}</div>
+          <div className="diff-text" style={{ color: 'var(--text-light)' }}>{diff.canonical_text}</div>
         </div>
       </div>
     )
+  }
+
+  const formatFieldValue = (val: string | boolean | null | undefined): string => {
+    if (val === undefined || val === null) return '-'
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No'
+    return String(val)
   }
 
   if (isCheckingAuth) return <div className="login-wrapper"><div className="loading-spinner"></div></div>
@@ -312,7 +407,7 @@ function App() {
   }
 
   const overallStatus = result?.result?.overall_status
-  const isOverallMatch = OVERALL_MATCH.includes(overallStatus)
+  const isOverallMatch = OVERALL_MATCH.includes(overallStatus || '')
 
   return (
     <div className="app-shell">
@@ -324,7 +419,6 @@ function App() {
         </div>
       </div>
 
-      {/* Top Row: Upload (1/3) + Image (2/3) */}
       <div className="top-row">
         <div className="card upload-panel">
           <div className="card-title">New Analysis</div>
@@ -342,44 +436,20 @@ function App() {
 
             {showExpectedFields && (
               <div className="expected-fields-form">
-                <div className="form-group">
-                  <label className="form-label">Brand Name</label>
-                  <input className="form-control" type="text" value={expectedFields.brand_name} onChange={e => updateExpected('brand_name', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Class/Type</label>
-                  <input className="form-control" type="text" value={expectedFields.class_type} onChange={e => updateExpected('class_type', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Alcohol Content</label>
-                  <input className="form-control" type="text" value={expectedFields.alcohol_content} onChange={e => updateExpected('alcohol_content', e.target.value)} placeholder="e.g. 45% Alc./Vol." />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Net Contents</label>
-                  <input className="form-control" type="text" value={expectedFields.net_contents} onChange={e => updateExpected('net_contents', e.target.value)} placeholder="e.g. 750 mL" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Producer/Bottler <span className="optional-tag">(optional)</span></label>
-                  <input className="form-control" type="text" value={expectedFields.producer_bottler} onChange={e => updateExpected('producer_bottler', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Country of Origin <span className="optional-tag">(optional)</span></label>
-                  <input className="form-control" type="text" value={expectedFields.country_of_origin} onChange={e => updateExpected('country_of_origin', e.target.value)} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Beverage Type</label>
+                <div className="form-group"><label className="form-label">Brand Name</label><input className="form-control" type="text" value={expectedFields.brand_name} onChange={e => updateExpected('brand_name', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Class/Type</label><input className="form-control" type="text" value={expectedFields.class_type} onChange={e => updateExpected('class_type', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Alcohol Content</label><input className="form-control" type="text" value={expectedFields.alcohol_content} onChange={e => updateExpected('alcohol_content', e.target.value)} placeholder="e.g. 45% Alc./Vol." /></div>
+                <div className="form-group"><label className="form-label">Net Contents</label><input className="form-control" type="text" value={expectedFields.net_contents} onChange={e => updateExpected('net_contents', e.target.value)} placeholder="e.g. 750 mL" /></div>
+                <div className="form-group"><label className="form-label">Producer/Bottler <span className="optional-tag">(optional)</span></label><input className="form-control" type="text" value={expectedFields.producer_bottler} onChange={e => updateExpected('producer_bottler', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Country of Origin <span className="optional-tag">(optional)</span></label><input className="form-control" type="text" value={expectedFields.country_of_origin} onChange={e => updateExpected('country_of_origin', e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">Beverage Type</label>
                   <select className="form-control" value={expectedFields.beverage_type} onChange={e => updateExpected('beverage_type', e.target.value)}>
                     <option value="distilled_spirits">Distilled Spirits</option>
                     <option value="wine">Wine</option>
                     <option value="malt_beverages">Malt Beverages</option>
                   </select>
                 </div>
-                <div className="form-group checkbox-group">
-                  <label>
-                    <input type="checkbox" checked={expectedFields.government_warning_present} onChange={e => updateExpected('government_warning_present', e.target.checked)} />
-                    <span>Government Warning Required</span>
-                  </label>
-                </div>
+                <div className="form-group checkbox-group"><label><input type="checkbox" checked={expectedFields.government_warning_present} onChange={e => updateExpected('government_warning_present', e.target.checked)} /><span>Government Warning Required</span></label></div>
               </div>
             )}
 
@@ -392,9 +462,7 @@ function App() {
 
         <div className="card image-panel">
           {imagePreview ? (
-            <div className="image-viewbox">
-              <img src={imagePreview} alt="Label Preview" />
-            </div>
+            <div className="image-viewbox"><img src={imagePreview} alt="Label Preview" /></div>
           ) : (
             <div className="no-image">Select or upload a label image to preview</div>
           )}
@@ -422,7 +490,6 @@ function App() {
         </div>
       </div>
 
-      {/* Bottom: Full-width field comparison table */}
       {result && (
         <div className="card field-table-full">
           <div className="card-title">
@@ -433,26 +500,10 @@ function App() {
           </div>
           <div className="table-responsive">
             <table className="data-table" style={{ width: '100%' }}>
-              <thead>
-                <tr>
-                  <th>Field</th>
-                  <th>Expected</th>
-                  <th>Extracted from Label</th>
-                  <th>Match</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Field</th><th>Expected</th><th>Extracted from Label</th><th>Match</th><th>Status</th></tr></thead>
               <tbody>
                 {(result.result?.fields || []).map((field, i) => {
                   const badgeClass = STATUS_BADGE[field.status] || 'badge-warning'
-                  let expectedVal = '-'
-                  if (field.expected !== undefined && field.expected !== null) {
-                    expectedVal = typeof field.expected === 'boolean' ? (field.expected ? 'Yes' : 'No') : String(field.expected)
-                  }
-                  let foundVal = '-'
-                  if (field.found !== undefined && field.found !== null) {
-                    foundVal = typeof field.found === 'boolean' ? (field.found ? 'Yes' : 'No') : String(field.found)
-                  }
                   const isGovWarning = field.field === 'Government Warning'
                   const hasDiff = isGovWarning && field.gov_warning_diff
 
@@ -460,11 +511,7 @@ function App() {
                     <tr key={i} className={hasDiff ? 'expandable-row' : ''} onClick={hasDiff ? () => setExpandedGovWarning(!expandedGovWarning) : undefined}>
                       <td style={{ fontWeight: '600' }}>
                         {field.field}
-                        {field.explanation && (
-                          <div style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-light)', marginTop: '0.25rem' }}>
-                            {field.explanation}
-                          </div>
-                        )}
+                        {field.explanation && <div style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-light)', marginTop: '0.25rem' }}>{field.explanation}</div>}
                         {field.rule?.citation && (
                           <div style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: '0.1rem', fontWeight: 'normal' }}>
                             <a href={field.rule.source_url} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>{field.rule.citation}</a>
@@ -472,16 +519,13 @@ function App() {
                         )}
                         {hasDiff && !expandedGovWarning && (
                           <div style={{ fontSize: '0.7rem', color: 'var(--warning)', marginTop: '0.2rem', cursor: 'pointer' }}>
-                            {field.gov_warning_diff.is_exact_match
-                              ? 'Exact match ✓'
-                              : `${Math.round((1 - field.gov_warning_diff.similarity) * field.gov_warning_diff.canonical_text.length)} character differences ▼`
-                            }
+                            {field.gov_warning_diff!.is_exact_match ? 'Exact match ✓' : `${Math.round((1 - field.gov_warning_diff!.similarity) * field.gov_warning_diff!.canonical_text.length)} character differences ▼`}
                           </div>
                         )}
-                        {hasDiff && expandedGovWarning && renderGovWarningDiff(field.gov_warning_diff)}
+                        {hasDiff && expandedGovWarning && renderGovWarningDiff(field.gov_warning_diff!)}
                       </td>
-                      <td style={{ fontSize: '0.8rem' }}>{expectedVal}</td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-bright)' }}>{foundVal}</td>
+                      <td style={{ fontSize: '0.8rem' }}>{formatFieldValue(field.expected)}</td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-bright)' }}>{formatFieldValue(field.found)}</td>
                       <td style={{ fontSize: '0.8rem' }}>
                         {field.similarity > 0 && <div style={{ fontWeight: '500' }}>{Math.round(field.similarity * 100)}% sim</div>}
                         {field.ai_confidence > 0 && <div style={{ fontSize: '0.7rem', color: field.ai_confidence < 0.7 ? 'var(--warning)' : 'var(--text-light)' }}>AI: {Math.round(field.ai_confidence * 100)}%</div>}
@@ -496,31 +540,23 @@ function App() {
             </table>
           </div>
 
-          {result.result?.image_quality_flags?.length > 0 && (
-            <div className="alert alert-info" style={{ marginTop: '1rem' }}>
-              Image quality: {result.result.image_quality_flags.join(', ')}. Results may be less reliable.
-            </div>
+          {result.result?.image_quality_flags && result.result.image_quality_flags.length > 0 && (
+            <div className="alert alert-info" style={{ marginTop: '1rem' }}>Image quality: {result.result.image_quality_flags.join(', ')}. Results may be less reliable.</div>
           )}
-
-          {result.result?.warnings?.length > 0 && (
-            <div style={{ marginTop: '1rem' }}>
-              <h4>Regulatory Warnings</h4>
-              {result.result.warnings.map((w, i) => <div className="alert alert-error" key={i}>{w}</div>)}
-            </div>
+          {result.result?.warnings && result.result.warnings.length > 0 && (
+            <div style={{ marginTop: '1rem' }}><h4>Regulatory Warnings</h4>{result.result.warnings.map((w, i) => <div className="alert alert-error" key={i}>{w}</div>)}</div>
           )}
 
           <div style={{ marginTop: '1rem', textAlign: 'right' }}>
             <button className="btn btn-outline" onClick={() => {
               const fields = result.result?.fields || []
-              const rows = [['Field', 'Expected', 'Extracted', 'Similarity', 'AI Confidence', 'Status', 'CFR Citation', 'Explanation']]
+              const rows: string[][] = [['Field', 'Expected', 'Extracted', 'Similarity', 'AI Confidence', 'Status', 'CFR Citation', 'Explanation']]
               fields.forEach(f => {
-                const exp = typeof f.expected === 'boolean' ? (f.expected ? 'Yes' : 'No') : String(f.expected || '')
-                const found = typeof f.found === 'boolean' ? (f.found ? 'Yes' : 'No') : String(f.found || '')
-                rows.push([f.field, exp, found, f.similarity ? Math.round(f.similarity * 100) + '%' : '', f.ai_confidence ? Math.round(f.ai_confidence * 100) + '%' : '', f.status, f.rule?.citation || '', f.explanation || ''])
+                rows.push([f.field, formatFieldValue(f.expected), formatFieldValue(f.found), f.similarity ? Math.round(f.similarity * 100) + '%' : '', f.ai_confidence ? Math.round(f.ai_confidence * 100) + '%' : '', f.status, f.rule?.citation || '', f.explanation || ''])
               })
-              const r = result.result || {}
-              const header = `Filename,${result.summary?.filename || ''}\nOverall Status,${r.overall_status || ''}\nProvider Path,${r.provider_path || ''}\nEscalated,${r.escalated || false}\nEscalation Reasons,"${(r.escalation_reasons || []).join('; ')}"\nTotal Time,${r.timings?.total_time_ms || r.processing_time_ms || 0}ms\nOCR Time,${r.timings?.ocr_time_ms || 0}ms\nAI Time,${r.timings?.ai_native_time_ms || 0}ms\n\n`
-              const csv = header + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n')
+              const r = result.result
+              const header = `Filename,${result.summary?.filename || ''}\nOverall Status,${r?.overall_status || ''}\nProvider Path,${r?.provider_path || ''}\nEscalated,${r?.escalated || false}\nEscalation Reasons,"${(r?.escalation_reasons || []).join('; ')}"\nTotal Time,${r?.timings?.total_time_ms || r?.processing_time_ms || 0}ms\nOCR Time,${r?.timings?.ocr_time_ms || 0}ms\nAI Time,${r?.timings?.ai_native_time_ms || 0}ms\n\n`
+              const csv = header + rows.map(row => row.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n')
               const blob = new Blob([csv], { type: 'text/csv' })
               const url = URL.createObjectURL(blob)
               const a = document.createElement('a')
@@ -537,39 +573,21 @@ function App() {
         </div>
       )}
 
-      {/* Review History */}
       <div className="card review-history-section">
         <div className="card-title">Review History</div>
         {batchJobs.length > 0 && (
           <div style={{ marginBottom: '2rem' }}>
             <h4 style={{ marginTop: 0, marginBottom: '0.5rem', color: 'var(--accent)' }}>Batch Queue</h4>
-            <table className="data-table">
-              <thead><tr><th>Filename</th><th>Job ID</th></tr></thead>
-              <tbody>
-                {batchJobs.map((b, i) => (
-                  <tr key={i}><td>{b.filename}</td><td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{b.job_id}</td></tr>
-                ))}
-              </tbody>
+            <table className="data-table"><thead><tr><th>Filename</th><th>Job ID</th></tr></thead>
+              <tbody>{batchJobs.map((b, i) => <tr key={i}><td>{b.filename}</td><td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{b.job_id}</td></tr>)}</tbody>
             </table>
           </div>
         )}
         <div className="history-table-shell">
           <table className="data-table history-table">
-            <thead>
-              <tr>
-                <th>Filename</th>
-                <th>Status</th>
-                <th>Confidence</th>
-                <th>Decision</th>
-                <th>Brand</th>
-                <th>Class/Type</th>
-                <th>ABV</th>
-                <th>Net Contents</th>
-                <th>Submitted</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Filename</th><th>Status</th><th>Confidence</th><th>Decision</th><th>Brand</th><th>Class/Type</th><th>ABV</th><th>Net Contents</th><th>Submitted</th></tr></thead>
             <tbody>
-              {history.length === 0 && <tr><td colSpan="9" style={{ textAlign: 'center', padding: '1rem' }}>No recent reviews found.</td></tr>}
+              {history.length === 0 && <tr><td colSpan={9} style={{ textAlign: 'center', padding: '1rem' }}>No recent reviews found.</td></tr>}
               {history.map((item, idx) => {
                 const match = OVERALL_MATCH.includes(item.overall_status)
                 return (
@@ -577,12 +595,7 @@ function App() {
                     <td style={{ fontWeight: '500' }}>{item.filename}</td>
                     <td><span className={`badge ${match ? 'badge-success' : 'badge-warning'}`}>{item.overall_status || 'Unknown'}</span></td>
                     <td>{item.overall_confidence || 0}%</td>
-                    <td>
-                      {item.reviewer_decision
-                        ? <span className="badge badge-info">{item.reviewer_decision}</span>
-                        : <span style={{ color: 'var(--text-light)' }}>unreviewed</span>
-                      }
-                    </td>
+                    <td>{item.reviewer_decision ? <span className="badge badge-info">{item.reviewer_decision}</span> : <span style={{ color: 'var(--text-light)' }}>unreviewed</span>}</td>
                     <td>{item.brand_name || '-'}</td>
                     <td>{item.class_type || '-'}</td>
                     <td>{item.alcohol_content || '-'}</td>
