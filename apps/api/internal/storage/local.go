@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,19 +19,34 @@ type LocalProvider struct {
 }
 
 func NewLocalProvider() *LocalProvider {
-	baseDir := "data/reviews"
-	os.MkdirAll(baseDir, 0755)
+	baseDir := os.Getenv("BARREL_STORAGE_DIR")
+	if baseDir == "" {
+		baseDir = "./data/barrel_storage"
+	}
+	if err := os.MkdirAll(baseDir, 0755); err != nil {
+		baseDir = filepath.Join(os.TempDir(), "barrel_storage")
+		_ = os.MkdirAll(baseDir, 0755)
+	}
+	log.Printf("Local review storage base directory: %s", baseDir)
 	return &LocalProvider{baseDir: baseDir}
 }
 
-func (l *LocalProvider) getJobDir(jobID string) string {
+func (l *LocalProvider) getJobDir(jobID string) (string, error) {
 	dir := filepath.Join(l.baseDir, jobID)
-	os.MkdirAll(dir, 0755)
-	return dir
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
+	return dir, nil
 }
 
 func (l *LocalProvider) SaveImage(ctx context.Context, jobID string, data []byte) error {
-	return os.WriteFile(filepath.Join(l.getJobDir(jobID), "image.png"), data, 0644)
+	dir, err := l.getJobDir(jobID)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "image.png")
+	log.Printf("Saving review image: %s", path)
+	return os.WriteFile(path, data, 0644)
 }
 
 func (l *LocalProvider) SaveResult(ctx context.Context, jobID string, result *models.LabelAnalysisResult) error {
@@ -38,7 +54,13 @@ func (l *LocalProvider) SaveResult(ctx context.Context, jobID string, result *mo
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(l.getJobDir(jobID), "result.json"), b, 0644)
+	dir, err := l.getJobDir(jobID)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "result.json")
+	log.Printf("Saving review result: %s", path)
+	return os.WriteFile(path, b, 0644)
 }
 
 func (l *LocalProvider) SaveDecision(ctx context.Context, jobID string, decision ReviewDecision) error {
@@ -46,10 +68,17 @@ func (l *LocalProvider) SaveDecision(ctx context.Context, jobID string, decision
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(l.getJobDir(jobID), "decision.json"), b, 0644)
+	dir, err := l.getJobDir(jobID)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, "decision.json")
+	log.Printf("Saving review decision: %s", path)
+	return os.WriteFile(path, b, 0644)
 }
 
 func (l *LocalProvider) ListReviews(ctx context.Context) ([]ReviewRecord, error) {
+	log.Printf("Listing reviews from: %s", l.baseDir)
 	entries, err := os.ReadDir(l.baseDir)
 	if err != nil {
 		return nil, err

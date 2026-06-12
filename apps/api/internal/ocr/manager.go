@@ -37,7 +37,7 @@ func (m *Manager) Extract(ctx context.Context, input providers.ExtractInput, req
 	if requestedProvider == "paddleocr_worker" {
 		return m.fallback.Extract(ctx, input)
 	}
-	if requestedProvider == "azure_vision" && m.primary != nil {
+	if requestedProvider == "azure_vision_ocr" && m.primary != nil {
 		return m.primary.Extract(ctx, input)
 	}
 

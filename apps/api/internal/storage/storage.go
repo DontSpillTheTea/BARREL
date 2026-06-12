@@ -13,13 +13,13 @@ type ReviewDecision struct {
 }
 
 type ReviewRecord struct {
-	JobID        string                     `json:"job_id"`
-	Filename     string                     `json:"filename"`
-	Timestamp    string                     `json:"timestamp"`
-	Status       string                     `json:"status"` // unreviewed, approved, rejected, needs_more_info
-	Notes        string                     `json:"notes"`
-	Result       *models.LabelAnalysisResult `json:"result,omitempty"`
-	HasImage     bool                       `json:"has_image"`
+	JobID     string                      `json:"job_id"`
+	Filename  string                      `json:"filename"`
+	Timestamp string                      `json:"timestamp"`
+	Status    string                      `json:"status"` // unreviewed, approved, rejected, needs_more_info
+	Notes     string                      `json:"notes"`
+	Result    *models.LabelAnalysisResult `json:"result,omitempty"`
+	HasImage  bool                        `json:"has_image"`
 }
 
 type Provider interface {
@@ -33,7 +33,7 @@ type Provider interface {
 
 func NewProvider() Provider {
 	providerType := os.Getenv("STORAGE_PROVIDER")
-	if providerType == "azure" {
+	if providerType == "azure" || providerType == "azure_blob" {
 		return NewAzureBlobProvider()
 	}
 	return NewLocalProvider()

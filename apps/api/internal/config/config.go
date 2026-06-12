@@ -3,16 +3,26 @@ package config
 import "os"
 
 type Config struct {
-	OCRWorkerURL               string
-	MaxUploadMB                int64
-	RulesPath                  string
-	AISecondReadEnabled        bool
-	AISecondReadAutoOnFail     bool
-	AzureOpenAIEndpoint        string
-	AzureOpenAIAPIKey          string
-	AzureOpenAIDeployment      string
-	AzureOpenAIAPIVersion      string
-	AISecondReadTimeoutSeconds int
+	OCRWorkerURL          string
+	MaxUploadMB           int64
+	RulesPath             string
+	AINativeEnabled       bool
+	AzureOpenAIEndpoint   string
+	AzureOpenAIAPIKey     string
+	AzureOpenAIDeployment string
+	AzureOpenAIAPIVersion string
+}
+
+func envBool(primary, legacy string, defaultValue bool) bool {
+	if value := os.Getenv(primary); value != "" {
+		return value == "true"
+	}
+	if legacy != "" {
+		if value := os.Getenv(legacy); value != "" {
+			return value == "true"
+		}
+	}
+	return defaultValue
 }
 
 func Load() Config {
@@ -25,15 +35,13 @@ func Load() Config {
 		rulesPath = "../../rules/ttb"
 	}
 	return Config{
-		OCRWorkerURL:               url,
-		MaxUploadMB:                25,
-		RulesPath:                  rulesPath,
-		AISecondReadEnabled:        os.Getenv("AI_SECOND_READ_ENABLED") == "true",
-		AISecondReadAutoOnFail:     os.Getenv("AI_SECOND_READ_AUTO_ON_FAIL") == "true",
-		AzureOpenAIEndpoint:        os.Getenv("AZURE_OPENAI_ENDPOINT"),
-		AzureOpenAIAPIKey:          os.Getenv("AZURE_OPENAI_API_KEY"),
-		AzureOpenAIDeployment:      os.Getenv("AZURE_OPENAI_DEPLOYMENT"),
-		AzureOpenAIAPIVersion:      os.Getenv("AZURE_OPENAI_API_VERSION"),
-		AISecondReadTimeoutSeconds: 45,
+		OCRWorkerURL:          url,
+		MaxUploadMB:           25,
+		RulesPath:             rulesPath,
+		AINativeEnabled:       envBool("AI_NATIVE_ENABLED", "AI_SECOND_READ_ENABLED", true),
+		AzureOpenAIEndpoint:   os.Getenv("AZURE_OPENAI_ENDPOINT"),
+		AzureOpenAIAPIKey:     os.Getenv("AZURE_OPENAI_API_KEY"),
+		AzureOpenAIDeployment: os.Getenv("AZURE_OPENAI_DEPLOYMENT"),
+		AzureOpenAIAPIVersion: os.Getenv("AZURE_OPENAI_API_VERSION"),
 	}
 }

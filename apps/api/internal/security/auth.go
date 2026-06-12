@@ -11,6 +11,9 @@ func RequireToken(next http.HandlerFunc) http.HandlerFunc {
 		token := os.Getenv("BARREL_REVIEW_TOKEN")
 		if token != "" {
 			reqToken := r.Header.Get("X-BARREL-REVIEW-TOKEN")
+			if reqToken == "" {
+				reqToken = r.URL.Query().Get("token")
+			}
 			if reqToken != token {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusUnauthorized)

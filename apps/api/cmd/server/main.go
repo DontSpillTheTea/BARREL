@@ -8,8 +8,11 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/ai"
 	"github.com/DontSpillTheTea/barrel/apps/api/internal/analysis"
@@ -24,11 +27,11 @@ import (
 )
 
 type APIResponse struct {
-	Status   string                  `json:"status"`
-	Service  string                  `json:"service"`
-	Filename string                  `json:"filename,omitempty"`
-	OCR      *providers.OCRResult    `json:"ocr,omitempty"`
-	Error    string                  `json:"error,omitempty"`
+	Status   string               `json:"status"`
+	Service  string               `json:"service"`
+	Filename string               `json:"filename,omitempty"`
+	OCR      *providers.OCRResult `json:"ocr,omitempty"`
+	Error    string               `json:"error,omitempty"`
 }
 
 func main() {
@@ -40,44 +43,21 @@ func main() {
 	}
 
 	var aiProvider ai.Provider
-	if cfg.AISecondReadEnabled {
-		if cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIAPIKey != "" {
-			aiProvider = ai.NewAzureOpenAIProvider(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIAPIKey, cfg.AzureOpenAIDeployment, cfg.AzureOpenAIAPIVersion)
-			log.Println("Azure OpenAI provider configured for Second Read.")
-		} else {
-			aiProvider = ai.NewMockProvider()
-			log.Println("Azure OpenAI credentials missing; using Mock AI provider for Second Read.")
-		}
+	if cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIAPIKey != "" && cfg.AzureOpenAIAPIKey != "dummy" {
+		aiProvider = ai.NewAzureOpenAIProvider(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIAPIKey, cfg.AzureOpenAIDeployment, cfg.AzureOpenAIAPIVersion)
+		log.Println("Azure OpenAI provider configured.")
+	} else {
+		aiProvider = ai.NewMockProvider()
+		log.Println("Azure OpenAI credentials missing or dummy; using Mock AI provider.")
 	}
 
 	jobStore := jobs.NewStore()
 	storageProvider := storage.NewProvider()
+	log.Printf("Using storage provider: %T", storageProvider)
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok", "service": "barrel-api"})
-	})
-
-	http.HandleFunc("/health/ocr-worker", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		res, err := ocrManager.WorkerHealth()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{"status": "error", "service": "barrel-api", "error": "ocr_worker_unreachable"})
-			return
-		}
-		json.NewEncoder(w).Encode(res)
-	})
-
-	http.HandleFunc("/health/ocr-worker-ready", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		res, err := ocrManager.WorkerReady()
-		if err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			json.NewEncoder(w).Encode(map[string]string{"status": "error", "service": "barrel-api", "error": "ocr_worker_unreachable"})
-			return
-		}
-		json.NewEncoder(w).Encode(res)
 	})
 
 	security.RegisterAuthRoutes()
@@ -111,7 +91,10 @@ func main() {
 		}
 
 		provider := r.FormValue("ocr_provider")
-		
+		if provider == "" {
+			provider = "azure_vision_ocr"
+		}
+
 		buf := &bytes.Buffer{}
 		io.Copy(buf, file)
 		input := providers.ExtractInput{
@@ -182,7 +165,10 @@ func main() {
 		}
 
 		provider := r.FormValue("ocr_provider")
-		
+		if provider == "" {
+			provider = "azure_vision_ocr"
+		}
+
 		buf := &bytes.Buffer{}
 		io.Copy(buf, file)
 		input := providers.ExtractInput{
@@ -253,7 +239,7 @@ func main() {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		
+
 		if !security.IsAllowedExtension(header.Filename) {
 			file.Close()
 			w.WriteHeader(http.StatusBadRequest)
@@ -271,6 +257,9 @@ func main() {
 		ext := strings.ToLower(filepath.Ext(header.Filename))
 
 		provider := r.FormValue("ocr_provider")
+		if provider == "" {
+			provider = "ai_native"
+		}
 		var expected models.ExpectedLabelFields
 		if expectedStr := r.FormValue("expected_json"); expectedStr != "" {
 			json.Unmarshal([]byte(expectedStr), &expected)
@@ -286,7 +275,7 @@ func main() {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			
+
 			var spawnedJobs []map[string]string
 			for _, zf := range zipReader.File {
 				zExt := strings.ToLower(filepath.Ext(zf.Name))
@@ -298,21 +287,21 @@ func main() {
 					var zBuf bytes.Buffer
 					io.Copy(&zBuf, rc)
 					rc.Close()
-					
+
 					job := jobStore.CreateJob(zf.Name)
 					spawnedJobs = append(spawnedJobs, map[string]string{
-						"job_id": job.ID,
+						"job_id":   job.ID,
 						"filename": zf.Name,
 					})
-					
+
 					go processJob(job.ID, zf.Name, provider, beverageType, expected, zBuf.Bytes(), jobStore, ocrManager, catalog, aiProvider, cfg, storageProvider)
 				}
 			}
 			w.WriteHeader(http.StatusAccepted)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"status": "accepted",
-				"batch": true,
-				"jobs": spawnedJobs,
+				"batch":  true,
+				"jobs":   spawnedJobs,
 			})
 			return
 		}
@@ -345,9 +334,19 @@ func main() {
 
 		job, ok := jobStore.GetJob(jobID)
 		if !ok {
+			record, err := storageProvider.GetReview(r.Context(), jobID)
+			if err == nil {
+				log.Printf("jobs route fallback hit for %s via storage", jobID)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"status": "succeeded",
+					"result": record.Result,
+				})
+				return
+			}
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+		log.Printf("jobs route in-memory hit for %s status=%s", jobID, job.Status)
 
 		json.NewEncoder(w).Encode(job)
 	}))
@@ -363,12 +362,31 @@ func main() {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		
-		var summaries []models.ReviewSummary
+		liveJobs := jobStore.ListJobs()
+		log.Printf("reviews route: persisted=%d live_jobs=%d", len(records), len(liveJobs))
+
+		summariesByID := map[string]models.ReviewSummary{}
 		for _, rec := range records {
-			summaries = append(summaries, recordToSummary(rec))
+			summary := recordToSummary(rec)
+			summariesByID[summary.JobID] = summary
 		}
-		
+
+		for _, job := range liveJobs {
+			summary := summaryFromJob(job)
+			if existing, ok := summariesByID[summary.JobID]; ok {
+				if summary.ReviewerDecision == "" {
+					summary.ReviewerDecision = existing.ReviewerDecision
+				}
+			}
+			summariesByID[summary.JobID] = summary
+		}
+
+		summaries := make([]models.ReviewSummary, 0, len(summariesByID))
+		for _, summary := range summariesByID {
+			summaries = append(summaries, summary)
+		}
+		sort.Slice(summaries, func(i, j int) bool { return summaries[i].SubmittedAt > summaries[j].SubmittedAt })
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"reviews": summaries,
 		})
@@ -395,13 +413,18 @@ func main() {
 			}
 
 			record, err := storageProvider.GetReview(r.Context(), jobID)
-			if err != nil {
-				w.WriteHeader(http.StatusNotFound)
+			if err == nil {
+				detail := recordToDetail(record)
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(detail)
 				return
 			}
-			detail := recordToDetail(record)
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(detail)
+			if job, ok := jobStore.GetJob(jobID); ok && job.Result != nil {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(detailFromJob(job))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
@@ -414,8 +437,12 @@ func main() {
 					return
 				}
 				if err := storageProvider.SaveDecision(r.Context(), id, dec); err != nil {
-					w.WriteHeader(http.StatusInternalServerError)
-					return
+					if !jobStore.SetDecision(id, dec.Decision, dec.Notes) {
+						w.WriteHeader(http.StatusInternalServerError)
+						return
+					}
+				} else {
+					jobStore.SetDecision(id, dec.Decision, dec.Notes)
 				}
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -426,7 +453,13 @@ func main() {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 	}))
 
-	port := ":8080"
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
 	log.Printf("Starting Go API on port %s...\n", port)
 	handler := security.CORS(http.DefaultServeMux)
 	if err := http.ListenAndServe(port, handler); err != nil {
@@ -436,11 +469,11 @@ func main() {
 
 func recordToSummary(r storage.ReviewRecord) models.ReviewSummary {
 	sum := models.ReviewSummary{
-		ID:                r.JobID,
-		JobID:             r.JobID,
-		Filename:          r.Filename,
-		SubmittedAt:       r.Timestamp,
-		ReviewerDecision:  r.Status,
+		ID:               r.JobID,
+		JobID:            r.JobID,
+		Filename:         r.Filename,
+		SubmittedAt:      r.Timestamp,
+		ReviewerDecision: r.Status,
 	}
 	if r.Result != nil {
 		if sum.Filename == "" {
@@ -449,20 +482,27 @@ func recordToSummary(r storage.ReviewRecord) models.ReviewSummary {
 		sum.OverallStatus = r.Result.OverallStatus
 		sum.OverallConfidence = r.Result.OverallConfidence
 		sum.BeverageType = r.Result.BeverageType
-		
-		provider := "unknown"
-		if r.Result.RequestedProvider != "" {
-			provider = r.Result.RequestedProvider
+
+		sum.ProviderRequested = r.Result.RequestedProvider
+
+		providerUsed := "unknown"
+		if r.Result.AIEscalation.Used {
+			providerUsed = r.Result.AIEscalation.Provider
 		} else if r.Result.OCR != nil {
-			provider = r.Result.OCR.SelectedProvider
-		} else if r.Result.AISecondRead != nil && r.Result.AISecondRead.Used {
-			provider = r.Result.AISecondRead.Provider
+			providerUsed = r.Result.OCR.SelectedProvider
+		} else if r.Result.RequestedProvider != "" {
+			providerUsed = r.Result.RequestedProvider
 		}
-		sum.OCRProvider = provider
+		sum.ProviderUsed = providerUsed
+
+		sum.BrandName = r.Result.ExtractedFields.BrandName
+		sum.ClassType = r.Result.ExtractedFields.ClassType
+		sum.AlcoholContent = r.Result.ExtractedFields.AlcoholContent
+		sum.NetContents = r.Result.ExtractedFields.NetContents
 
 		passCount := 0
 		for _, f := range r.Result.Fields {
-			if f.Status == "Pass" {
+			if f.Status == models.StatusMatch || f.Status == "Pass" {
 				passCount++
 			}
 		}
@@ -488,102 +528,222 @@ func recordToDetail(r *storage.ReviewRecord) models.ReviewDetail {
 	return det
 }
 
+func summaryFromJob(job *jobs.Job) models.ReviewSummary {
+	sum := models.ReviewSummary{
+		ID:               job.ID,
+		JobID:            job.ID,
+		Filename:         job.Filename,
+		SubmittedAt:      job.CreatedAt.Format(time.RFC3339),
+		CompletedAt:      job.UpdatedAt.Format(time.RFC3339),
+		ReviewerDecision: job.Decision,
+	}
+	if job.Result != nil {
+		sum.OverallStatus = job.Result.OverallStatus
+		sum.OverallConfidence = job.Result.OverallConfidence
+		sum.BeverageType = job.Result.BeverageType
+		sum.ProviderRequested = job.Result.RequestedProvider
+		sum.BrandName = job.Result.ExtractedFields.BrandName
+		sum.ClassType = job.Result.ExtractedFields.ClassType
+		sum.AlcoholContent = job.Result.ExtractedFields.AlcoholContent
+		sum.NetContents = job.Result.ExtractedFields.NetContents
+
+		providerUsed := "unknown"
+		if job.Result.AIEscalation.Used {
+			providerUsed = job.Result.AIEscalation.Provider
+		} else if job.Result.OCR != nil {
+			providerUsed = job.Result.OCR.SelectedProvider
+		} else if job.Result.RequestedProvider != "" {
+			providerUsed = job.Result.RequestedProvider
+		}
+		sum.ProviderUsed = providerUsed
+
+		passCount := 0
+		for _, f := range job.Result.Fields {
+			if f.Status == models.StatusMatch || f.Status == "Pass" {
+				passCount++
+			}
+		}
+		sum.FieldPassCount = passCount
+		sum.FieldTotalCount = len(job.Result.Fields)
+	}
+	return sum
+}
+
+func detailFromJob(job *jobs.Job) models.ReviewDetail {
+	detail := models.ReviewDetail{
+		Summary: summaryFromJob(job),
+	}
+	if job.Result != nil {
+		detail.Result = *job.Result
+		if job.Result.OCR != nil {
+			detail.RawOCRText = job.Result.OCR.Text
+		}
+	}
+	return detail
+}
+
 func processJob(jobID, filename, provider string, beverageType string, expected models.ExpectedLabelFields, fileData []byte, jobStore *jobs.Store, ocrManager *ocr.Manager, catalog *rules.Catalog, aiProvider ai.Provider, cfg config.Config, storageProvider storage.Provider) {
+	startTime := time.Now()
 	jobStore.UpdateJobStatus(jobID, jobs.StatusProcessing)
-	
+	log.Printf("Processing job %s with requested provider=%s aiProviderType=%T storageProviderType=%T", jobID, provider, aiProvider, storageProvider)
+
 	inputData := providers.ExtractInput{
 		Filename:    filename,
 		ContentType: "application/octet-stream",
 		Data:        fileData,
 	}
 	ctx := context.Background()
-	_ = storageProvider.SaveImage(ctx, jobID, fileData)
+	if err := storageProvider.SaveImage(ctx, jobID, fileData); err != nil {
+		log.Printf("failed to save image for job %s: %v", jobID, err)
+	}
 
-	if provider == "ai_based" && aiProvider == nil {
-		res := &models.LabelAnalysisResult{
+	if provider == "ai_native" && !cfg.AINativeEnabled {
+		res := models.LabelAnalysisResult{
 			Filename:          filename,
 			RequestedProvider: provider,
+			BeverageType:      beverageType,
 			OverallStatus:     "Error",
-			OverallConfidence: 0,
+			ExpectedFields:    expected,
 			AIEscalation: models.AIEscalation{
-				Eligible: false,
+				Eligible: true,
 				Used:     false,
-				Provider: "ai_based",
+				Provider: "ai_native",
+				Reason:   "AI-native parser is disabled",
+			},
+		}
+		jobStore.FailJob(jobID, "ai_native_disabled", &res)
+		_ = storageProvider.SaveResult(ctx, jobID, &res)
+		return
+	}
+
+	if provider == "ai_native" && aiProvider == nil {
+		res := models.LabelAnalysisResult{
+			Filename:          filename,
+			RequestedProvider: provider,
+			BeverageType:      beverageType,
+			OverallStatus:     "Error",
+			ExpectedFields:    expected,
+			AIEscalation: models.AIEscalation{
+				Eligible: true,
+				Used:     false,
+				Provider: "ai_native",
 				Reason:   "AI provider not configured",
 			},
 		}
-		jobStore.FailJob(jobID, "ai_provider_not_configured", res)
-		_ = storageProvider.SaveResult(ctx, jobID, res)
+		jobStore.FailJob(jobID, "ai_provider_not_configured", &res)
+		_ = storageProvider.SaveResult(ctx, jobID, &res)
 		return
 	}
-
-	ocrRes, err := ocrManager.Extract(ctx, inputData, provider)
-	if err != nil {
-		res := &models.LabelAnalysisResult{
-			Filename:          filename,
-			RequestedProvider: provider,
-			OverallStatus:     "Needs Review",
-			OverallConfidence: 0,
-			AIEscalation: models.AIEscalation{
-				Eligible: true,
-				Used:     false,
-				Provider: "none",
-				Reason:   "Accurate local OCR failed or timed out.",
-			},
+	var ocrRes *providers.OCRResult
+	var err error
+	if provider != "ai_native" {
+		ocrRes, err = ocrManager.Extract(ctx, inputData, provider)
+		if err != nil {
+			res := &models.LabelAnalysisResult{
+				Filename:          filename,
+				RequestedProvider: provider,
+				OverallStatus:     "Needs Review",
+				OverallConfidence: 0,
+				AIEscalation: models.AIEscalation{
+					Eligible: true,
+					Used:     false,
+					Provider: "none",
+					Reason:   "Accurate local OCR failed or timed out.",
+				},
+			}
+			jobStore.FailJob(jobID, "ocr_worker_communication_error", res)
+			_ = storageProvider.SaveResult(ctx, jobID, res)
+			return
 		}
-		jobStore.FailJob(jobID, "ocr_worker_communication_error", res)
-		_ = storageProvider.SaveResult(ctx, jobID, res)
-		return
-	}
 
-	if ocrRes.Status == "error" {
-		res := &models.LabelAnalysisResult{
-			Filename:          filename,
-			RequestedProvider: provider,
-			OverallStatus:     "Needs Review",
-			OverallConfidence: 0,
-			OCR:               ocrRes,
-			AIEscalation: models.AIEscalation{
-				Eligible: true,
-				Used:     false,
-				Provider: "none",
-				Reason:   "Local OCR provider was not ready or failed.",
-			},
+		if ocrRes.Status == "error" {
+			res := &models.LabelAnalysisResult{
+				Filename:          filename,
+				RequestedProvider: provider,
+				OverallStatus:     "Needs Review",
+				OverallConfidence: 0,
+				OCR:               ocrRes,
+				AIEscalation: models.AIEscalation{
+					Eligible: true,
+					Used:     false,
+					Provider: "none",
+					Reason:   "Local OCR provider was not ready or failed.",
+				},
+			}
+			jobStore.FailJob(jobID, "ocr_provider_error", res)
+			_ = storageProvider.SaveResult(ctx, jobID, res)
+			return
 		}
-		jobStore.FailJob(jobID, "ocr_provider_error", res)
-		_ = storageProvider.SaveResult(ctx, jobID, res)
-		return
 	}
 
-	input := models.AnalysisInput{
-		BeverageType:   beverageType,
-		Text:           ocrRes.Text,
-		ExpectedFields: expected,
+	var res models.LabelAnalysisResult
+
+	// Get OCR data if requested
+	if provider != "ai_native" {
+		res = analysis.AnalyzeText(models.AnalysisInput{
+			BeverageType:   beverageType,
+			Text:           ocrRes.Text,
+			ExpectedFields: expected,
+		}, catalog, ocrRes)
+		res.RequestedProvider = provider
+		res.OCRText = ocrRes.Text
+	} else {
+		// Just initialize empty result for AI to populate
+		res = models.LabelAnalysisResult{
+			BeverageType:      beverageType,
+			RequestedProvider: provider,
+			ExpectedFields:    expected,
+		}
 	}
-	res := analysis.AnalyzeText(input, catalog, ocrRes)
+
 	res.Filename = filename
-	res.RequestedProvider = provider
-	
-	// Auto AI Second Read or forced if provider is ai_based
-	forceAI := provider == "ai_based" || provider == "azure_openai"
-	if (forceAI || (cfg.AISecondReadAutoOnFail && res.AISecondRead != nil && res.AISecondRead.Eligible)) && aiProvider != nil {
-		secondReadInput := ai.SecondReadInput{
+
+	// Run the AI-native parser only when ai_native was requested.
+	if provider == "ai_native" && aiProvider != nil {
+		parserInput := ai.SecondReadInput{
 			Filename:       filename,
-			ContentType:    "application/octet-stream",
+			ContentType:    http.DetectContentType(fileData),
 			ImageBytes:     fileData,
 			OCRText:        res.OCRText,
 			ExpectedFields: expected,
 			BeverageType:   beverageType,
 			InitialResult:  res,
 		}
-		aiRes, _ := aiProvider.SecondRead(ctx, secondReadInput)
-		if aiRes != nil {
+		aiRes, err := aiProvider.SecondRead(ctx, parserInput)
+		if err != nil {
+			res.AIEscalation = models.AIEscalation{
+				Eligible: true,
+				Used:     false,
+				Provider: "ai_native",
+				Reason:   err.Error(),
+			}
+			res.Warnings = append(res.Warnings, "AI-native parser request failed.")
+		} else if aiRes != nil {
 			res.AISecondRead = aiRes
+			res.AIEscalation = models.AIEscalation{
+				Eligible: true,
+				Used:     true,
+				Provider: aiRes.Provider,
+				Reason:   aiRes.Reason,
+			}
+			res.ExtractedFields = models.ExtractedLabelFields{
+				BrandName:              aiRes.Candidates.BrandName.Value,
+				ClassType:              aiRes.Candidates.ClassType.Value,
+				AlcoholContent:         aiRes.Candidates.AlcoholContent.ABV,
+				NetContents:            aiRes.Candidates.NetContents.Value,
+				GovernmentWarningFound: aiRes.Candidates.GovernmentWarning.Present,
+				ProducerBottler:        aiRes.Candidates.ProducerOrBottler.Value,
+				CountryOfOrigin:        aiRes.Candidates.CountryOfOrigin.Value,
+			}
+			res = analysis.AnalyzeAI(res, catalog)
 		}
 	}
 
-	// Save to storage
-	_ = storageProvider.SaveResult(ctx, jobID, &res)
-	
+	res.ProcessingTimeMs = time.Since(startTime).Milliseconds()
+
+	if err := storageProvider.SaveResult(ctx, jobID, &res); err != nil {
+		log.Printf("failed to save result for job %s: %v", jobID, err)
+	}
+
 	jobStore.SucceedJob(jobID, &res)
 }

@@ -42,7 +42,7 @@ func NewAzureVisionProvider() (*AzureVisionProvider, error) {
 }
 
 func (a *AzureVisionProvider) Name() string {
-	return "azure_vision"
+	return "azure_vision_ocr"
 }
 
 func (a *AzureVisionProvider) Extract(ctx context.Context, input ExtractInput) (*OCRResult, error) {
@@ -114,8 +114,8 @@ func (a *AzureVisionProvider) Extract(ctx context.Context, input ExtractInput) (
 
 	return &OCRResult{
 		Status:           "ok",
-		Provider:         "azure_vision",
-		SelectedProvider: "azure_vision",
+		Provider:         "azure_vision_ocr",
+		SelectedProvider: "azure_vision_ocr",
 		Text:             strings.TrimSpace(textBuilder.String()),
 		MeanConfidence:   meanConf,
 		Raw:              raw,

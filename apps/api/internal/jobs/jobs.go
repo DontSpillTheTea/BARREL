@@ -26,6 +26,8 @@ type Job struct {
 	Filename  string                      `json:"filename"`
 	Error     string                      `json:"error,omitempty"`
 	Result    *models.LabelAnalysisResult `json:"result,omitempty"`
+	Decision  string                      `json:"decision,omitempty"`
+	Notes     string                      `json:"notes,omitempty"`
 }
 
 type Store struct {
@@ -97,4 +99,28 @@ func (s *Store) SucceedJob(id string, result *models.LabelAnalysisResult) {
 		job.Result = result
 		job.UpdatedAt = time.Now()
 	}
+}
+
+func (s *Store) SetDecision(id, decision, notes string) bool {
+	s.Lock()
+	defer s.Unlock()
+
+	if job, ok := s.jobs[id]; ok {
+		job.Decision = decision
+		job.Notes = notes
+		job.UpdatedAt = time.Now()
+		return true
+	}
+	return false
+}
+
+func (s *Store) ListJobs() []*Job {
+	s.RLock()
+	defer s.RUnlock()
+
+	out := make([]*Job, 0, len(s.jobs))
+	for _, job := range s.jobs {
+		out = append(out, job)
+	}
+	return out
 }
