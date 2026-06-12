@@ -37,10 +37,7 @@
 
 ## Future Work
 
-- Bounding box overlays on extracted fields
-- CSV expected-data import for ZIP batches
+- US region migration (currently Sweden Central)
 - Bold text detection for government warning prefix
-- COLA integration plan documentation
 - Container size validation per beverage type (27 CFR § 5.71, § 4.72)
-- Confidence calibration per beverage type
 - Production security hardening
