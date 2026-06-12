@@ -21,6 +21,8 @@ type Config struct {
 	OcrMinConfidence        float64
 	FieldMinConfidence      float64
 	GovWarningMinSimilarity float64
+
+	AzureStorageTable string
 }
 
 func envBool(primary, legacy string, defaultValue bool) bool {
@@ -76,5 +78,7 @@ func Load() Config {
 		OcrMinConfidence:        envFloat("BARREL_OCR_MIN_CONFIDENCE", 0.80),
 		FieldMinConfidence:      envFloat("BARREL_FIELD_MIN_CONFIDENCE", 0.70),
 		GovWarningMinSimilarity: envFloat("BARREL_GOV_WARNING_MIN_SIMILARITY", 0.95),
+
+		AzureStorageTable: envString("AZURE_STORAGE_TABLE", "reviews"),
 	}
 }

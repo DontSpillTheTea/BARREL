@@ -77,14 +77,14 @@ func (l *LocalProvider) SaveDecision(ctx context.Context, jobID string, decision
 	return os.WriteFile(path, b, 0644)
 }
 
-func (l *LocalProvider) ListReviews(ctx context.Context) ([]ReviewRecord, error) {
+func (l *LocalProvider) ListReviews(ctx context.Context) ([]models.ReviewSummary, error) {
 	log.Printf("Listing reviews from: %s", l.baseDir)
 	entries, err := os.ReadDir(l.baseDir)
 	if err != nil {
 		return nil, err
 	}
 
-	var records []ReviewRecord
+	var summaries []models.ReviewSummary
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
@@ -92,16 +92,58 @@ func (l *LocalProvider) ListReviews(ctx context.Context) ([]ReviewRecord, error)
 		jobID := entry.Name()
 		record, err := l.GetReview(ctx, jobID)
 		if err == nil && record != nil {
-			records = append(records, *record)
+			summaries = append(summaries, recordToLocalSummary(record))
 		}
 	}
 
-	// Sort newest first
-	sort.Slice(records, func(i, j int) bool {
-		return records[i].Timestamp > records[j].Timestamp
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].SubmittedAt > summaries[j].SubmittedAt
 	})
 
-	return records, nil
+	return summaries, nil
+}
+
+func recordToLocalSummary(r *ReviewRecord) models.ReviewSummary {
+	s := models.ReviewSummary{
+		ID:               r.JobID,
+		JobID:            r.JobID,
+		Filename:         r.Filename,
+		SubmittedAt:      r.Timestamp,
+		ReviewerDecision: r.Status,
+	}
+	if r.Result != nil {
+		if s.Filename == "" {
+			s.Filename = r.Result.Filename
+		}
+		s.OverallStatus = r.Result.OverallStatus
+		s.OverallConfidence = r.Result.OverallConfidence
+		s.BeverageType = r.Result.BeverageType
+		s.ProviderRequested = r.Result.RequestedProvider
+		s.BrandName = r.Result.ExtractedFields.BrandName
+		s.ClassType = r.Result.ExtractedFields.ClassType
+		s.AlcoholContent = r.Result.ExtractedFields.AlcoholContent
+		s.NetContents = r.Result.ExtractedFields.NetContents
+
+		providerUsed := "unknown"
+		if r.Result.AIEscalation.Used {
+			providerUsed = r.Result.AIEscalation.Provider
+		} else if r.Result.OCR != nil {
+			providerUsed = r.Result.OCR.SelectedProvider
+		} else if r.Result.RequestedProvider != "" {
+			providerUsed = r.Result.RequestedProvider
+		}
+		s.ProviderUsed = providerUsed
+
+		passCount := 0
+		for _, f := range r.Result.Fields {
+			if f.Status == models.StatusMatch || f.Status == "Pass" {
+				passCount++
+			}
+		}
+		s.FieldPassCount = passCount
+		s.FieldTotalCount = len(r.Result.Fields)
+	}
+	return s
 }
 
 func (l *LocalProvider) GetReview(ctx context.Context, jobID string) (*ReviewRecord, error) {

@@ -31,6 +31,11 @@ resource "azurerm_storage_container" "reviews" {
   container_access_type = "private"
 }
 
+resource "azurerm_storage_table" "reviews" {
+  name                 = "reviews"
+  storage_account_name = azurerm_storage_account.main.name
+}
+
 resource "azurerm_container_registry" "main" {
   name                = "${var.resource_prefix}acr${var.env_suffix}"
   resource_group_name = data.azurerm_resource_group.main.name
@@ -166,6 +171,10 @@ resource "azurerm_container_app" "api" {
         value = azurerm_storage_container.reviews.name
       }
       env {
+        name  = "AZURE_STORAGE_TABLE"
+        value = azurerm_storage_table.reviews.name
+      }
+      env {
         name  = "BARREL_DEMO_USERNAME"
         value = var.demo_username
       }
@@ -266,6 +275,10 @@ output "acr_server" {
 
 output "storage_account" {
   value = azurerm_storage_account.main.name
+}
+
+output "storage_table" {
+  value = azurerm_storage_table.reviews.name
 }
 
 output "key_vault_name" {

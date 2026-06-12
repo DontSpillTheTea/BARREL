@@ -367,17 +367,16 @@ func main() {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
-		records, err := storageProvider.ListReviews(r.Context())
+		storedSummaries, err := storageProvider.ListReviews(r.Context())
 		if err != nil {
 			log.Printf("ListReviews storage error: %v, using in-memory jobs only", err)
-			records = []storage.ReviewRecord{}
+			storedSummaries = []models.ReviewSummary{}
 		}
 		liveJobs := jobStore.ListJobs()
-		log.Printf("reviews route: persisted=%d live_jobs=%d", len(records), len(liveJobs))
+		log.Printf("reviews route: persisted=%d live_jobs=%d", len(storedSummaries), len(liveJobs))
 
 		summariesByID := map[string]models.ReviewSummary{}
-		for _, rec := range records {
-			summary := recordToSummary(rec)
+		for _, summary := range storedSummaries {
 			summariesByID[summary.JobID] = summary
 		}
 
@@ -477,13 +476,11 @@ func main() {
 	}
 }
 
-func recordToSummary(r storage.ReviewRecord) models.ReviewSummary {
+
+func recordToDetail(r *storage.ReviewRecord) models.ReviewDetail {
 	sum := models.ReviewSummary{
-		ID:               r.JobID,
-		JobID:            r.JobID,
-		Filename:         r.Filename,
-		SubmittedAt:      r.Timestamp,
-		ReviewerDecision: r.Status,
+		ID: r.JobID, JobID: r.JobID, Filename: r.Filename,
+		SubmittedAt: r.Timestamp, ReviewerDecision: r.Status,
 	}
 	if r.Result != nil {
 		if sum.Filename == "" {
@@ -492,39 +489,25 @@ func recordToSummary(r storage.ReviewRecord) models.ReviewSummary {
 		sum.OverallStatus = r.Result.OverallStatus
 		sum.OverallConfidence = r.Result.OverallConfidence
 		sum.BeverageType = r.Result.BeverageType
-
 		sum.ProviderRequested = r.Result.RequestedProvider
-
-		providerUsed := "unknown"
-		if r.Result.AIEscalation.Used {
-			providerUsed = r.Result.AIEscalation.Provider
-		} else if r.Result.OCR != nil {
-			providerUsed = r.Result.OCR.SelectedProvider
-		} else if r.Result.RequestedProvider != "" {
-			providerUsed = r.Result.RequestedProvider
-		}
-		sum.ProviderUsed = providerUsed
-
 		sum.BrandName = r.Result.ExtractedFields.BrandName
 		sum.ClassType = r.Result.ExtractedFields.ClassType
 		sum.AlcoholContent = r.Result.ExtractedFields.AlcoholContent
 		sum.NetContents = r.Result.ExtractedFields.NetContents
-
-		passCount := 0
+		if r.Result.AIEscalation.Used {
+			sum.ProviderUsed = r.Result.AIEscalation.Provider
+		} else if r.Result.RequestedProvider != "" {
+			sum.ProviderUsed = r.Result.RequestedProvider
+		}
 		for _, f := range r.Result.Fields {
 			if f.Status == models.StatusMatch || f.Status == "Pass" {
-				passCount++
+				sum.FieldPassCount++
 			}
 		}
-		sum.FieldPassCount = passCount
 		sum.FieldTotalCount = len(r.Result.Fields)
 	}
-	return sum
-}
-
-func recordToDetail(r *storage.ReviewRecord) models.ReviewDetail {
 	det := models.ReviewDetail{
-		Summary: recordToSummary(*r),
+		Summary: sum,
 	}
 	if r.Result != nil {
 		det.Result = *r.Result
