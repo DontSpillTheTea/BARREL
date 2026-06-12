@@ -155,6 +155,15 @@ The PRD target is ~5 seconds for normal/simple labels. The OCR fast path approac
 - AI extraction accuracy depends on image quality; poor images produce Uncertain status
 - Processing time varies by label complexity and escalation path
 
+## Infrastructure
+
+See [`infra/README.md`](infra/README.md) for complete Azure deployment instructions, including:
+- Prerequisites and tool installation
+- Pre-existing resource setup (Azure OpenAI, Vision OCR)
+- Step-by-step first deploy
+- What gets created (Container Apps, ACR, Storage, Key Vault)
+- Updating, tearing down, and troubleshooting
+
 ## Trade-offs
 
 | Decision | Rationale |
