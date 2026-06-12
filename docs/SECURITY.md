@@ -1,60 +1,37 @@
 # Security
 
-## Product posture
+**BARREL is a review assistant, not a final legal determination system.** This is a prototype; production deployment would require additional security review.
 
-BARREL handles potentially sensitive label images and reviewer decisions. The system is advisory only.
+## Secrets
+- No secrets committed to the repository
+- Local: `.env` file (gitignored)
+- Azure: Container Apps secrets injected from IaC, Key Vault for OpenAI key
+- Secrets never appear in logs, frontend, or exported reports
 
-**Required product statement:** BARREL is a review assistant, not a final legal determination system.
+## Data Handling
+- Uploaded label images may contain commercially sensitive information
+- Images are sent to Azure OpenAI and Azure Vision OCR for extraction
+- Review evidence (images, results, decisions) stored in Azure Blob Storage (private container)
+- Blob container `jobs` is private; no public access
+- Local development stores evidence in `/tmp/barrel_storage_local`
 
-## Core policies
+## Authentication
+- Demo evaluator login (username/password)
+- API protected by `X-BARREL-REVIEW-TOKEN` header
+- No public signup
+- CORS restricted to known frontend origins
+- HTTPS enforced on Azure Container Apps
 
-- No committed secrets.
-- Review token or evaluator login must gate API access.
-- Secrets stay in environment variables or Azure-managed secret stores.
-- Blob containers must not be public.
-- Do not log raw secrets, API keys, or sensitive auth material.
-- Do not log full raw label contents indiscriminately in application logs.
-- No arbitrary URL fetching from user-provided inputs.
+## Upload Validation
+- File size limit: 25MB
+- Allowed formats: JPEG, PNG, WebP, ZIP
+- Extension and MIME type validated server-side
 
-## AI provider handling
-
-- Images and parsed metadata are sent to the configured AI provider when `ai_native` is used.
-- No model provider call should happen without an explicit configured provider.
-- Preferred hosted provider is Azure OpenAI / Azure AI Foundry if quota is available.
-- Direct OpenAI API may be used as a temporary fallback if Azure OpenAI is blocked by subscription quota or region policy.
-- `azure_vision_ocr` may be used for debug/baseline evidence but is not the primary parser.
-
-## Data handling
-
-Preferred review evidence storage is object/blob storage.
-
-Azure implementation:
-
-- Azure Blob Storage for stored evidence
-- non-public containers
-- paths such as:
-  - `jobs/{job_id}/image.<ext>`
-  - `jobs/{job_id}/ai_raw.json`
-  - `jobs/{job_id}/result.json`
-  - `jobs/{job_id}/decision.json`
-
-Stored artifacts may contain business-sensitive label images and parsed metadata. Treat them accordingly.
-
-## Access control
-
-- No public signup.
-- HTTPS-only inbound access in Azure.
-- Demo evaluator credentials are a take-home tradeoff and must remain server-controlled.
-- CORS should only allow known frontend origins.
-
-## Upload restrictions
-
-- enforce upload size limits
-- restrict MIME types and extensions to supported image and zip formats
-- reject unsupported or malformed uploads early
-
-## Operational expectations
-
-- Use local validation first and Azure smoke second.
-- Do not claim deployment success without smoke tests.
-- Do not expose provider secrets in scripts, docs, screenshots, or commits.
+## Prototype Limitations
+- Demo auth credentials, not production-grade authentication
+- No multi-factor authentication
+- No role-based access control
+- No audit logging
+- No FedRAMP compliance
+- No PII compliance program
+- No data retention policy enforcement

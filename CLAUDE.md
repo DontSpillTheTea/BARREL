@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is BARREL
 
-BARREL (Beverage Alcohol Review & Regulatory Evidence Logger) is an AI-native label review assistant. It accepts beverage label images, extracts fields via Azure OpenAI (GPT-4o), runs deterministic regulatory checks against TTB rules, and persists review evidence for human decision-making.
+BARREL (Beverage Alcohol Review & Regulatory Evidence Logger) is an AI-assisted label review assistant. It uses a tiered pipeline: Azure Vision OCR for fast text extraction, a text-only LLM parser for field classification, deterministic regulatory validators, and Azure OpenAI vision for escalated cases. Evidence is persisted in Azure Blob Storage.
 
 **Required product statement:** BARREL is a review assistant, not a final legal determination system.
 
@@ -33,12 +33,15 @@ BARREL (Beverage Alcohol Review & Regulatory Evidence Logger) is an AI-native la
 ```
 Browser (React 19 / Vite 8, port 5173)
   -> Go API (net/http, port 8080)
-       -> Azure OpenAI GPT-4o (ai_native parser, image input)
-       -> Deterministic checks (analysis package + TTB rule catalog)
-       -> Object storage (local filesystem or Azure Blob)
+       -> Tiered pipeline (default):
+            1. Azure Vision OCR (text extraction, ~0.5s)
+            2. Text parser via Azure OpenAI gpt-4.1-mini (text-only, ~2-4s)
+            3. Deterministic validators (field-specific matching, <1ms)
+            4. [If needed] AI vision via Azure OpenAI gpt-4.1-mini (image, ~10-15s)
+       -> Azure Blob Storage (review evidence)
 ```
 
-The OCR worker (`apps/ocr-worker/`, Python/Flask, port 9090) is an optional debug baseline; the primary path is `ai_native` which sends images directly to Azure OpenAI.
+The OCR worker (`apps/ocr-worker/`, Python/Flask) is a legacy debug baseline. The primary path is `tiered` which uses Azure Vision OCR + text parser + optional AI vision escalation.
 
 ### Request flow
 
@@ -51,10 +54,11 @@ The OCR worker (`apps/ocr-worker/`, Python/Flask, port 9090) is an optional debu
 4. Frontend polls `GET /api/v1/jobs/{id}` until status is `succeeded`
 5. Results appear in Review History table; reviewer can approve/reject/needs-more-info
 
-### Two analysis paths
+### Analysis paths
 
-- **`analysis.AnalyzeText()`** (`analysis.go`): OCR text-based. Uses regex validators and fuzzy matching against expected fields. Computes AI escalation eligibility.
-- **`analysis.AnalyzeAI()`** (`ai_native.go`): AI-extracted fields. Compares AI candidates against expected fields with case-insensitive matching. Both paths produce `[]FieldCheckResult` with status Pass/Needs Review/Likely Fail.
+- **`analysis.AnalyzeTiered()`** (`tiered.go`): Default tiered pipeline — OCR → text parser → validators → optional AI vision escalation.
+- **`analysis.AnalyzeAI()`** (`ai_native.go`): Field-specific comparison using bigram similarity, numeric tolerance, verbatim matching. Produces `[]FieldCheckResult` with status Match/Mismatch/Missing on Label/Missing in Application Data/Uncertain.
+- **`analysis.AnalyzeText()`** (`analysis.go`): OCR text-based path (legacy).
 
 ## Key packages (apps/api/internal/)
 
