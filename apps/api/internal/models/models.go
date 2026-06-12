@@ -91,6 +91,7 @@ type AIGovernmentWarning struct {
 	ReasonIfMissing string   `json:"reason_if_missing,omitempty"`
 	PrefixSeen      bool     `json:"prefix_seen,omitempty"`
 	PrefixExactCaps bool     `json:"prefix_exact_caps,omitempty"`
+	PrefixBold      bool     `json:"prefix_bold,omitempty"`
 	BodyVerbatim    string   `json:"body_verbatim,omitempty"`
 	BodyConfidence  float64  `json:"body_confidence,omitempty"`
 	Legibility      string   `json:"legibility,omitempty"`

@@ -22,6 +22,7 @@ CRITICAL for government_warning:
 - Set legibility to "clear", "partial", or "illegible" based on how readable the warning text is.
 - prefix_seen: whether you see any form of "GOVERNMENT WARNING" heading.
 - prefix_exact_caps: whether the prefix is exactly "GOVERNMENT WARNING:" in all caps.
+- prefix_bold: whether the prefix text appears in bold/heavy weight styling (required per 27 CFR § 16.22).
 - body_verbatim: the exact text after the prefix, character by character as visible. Leave empty if illegible.
 - verbatim_text: the full warning including prefix, exactly as visible.
 YOU MUST RETURN ONLY RAW VALID JSON. DO NOT INCLUDE MARKDOWN CODE BLOCKS OR TRIPLE BACKTICKS.
@@ -37,7 +38,7 @@ Return exactly this JSON structure:
     "alcohol_content": { "abv": "...", "proof": "...", "confidence": 0.99, "evidence": "...", "source": "image" },
     "net_contents": { "value": "...", "confidence": 0.99, "evidence": "...", "source": "image" },
     "producer_or_bottler": { "value": "...", "confidence": 0.99, "evidence": "...", "source": "image" },
-    "government_warning": { "present": true, "prefix_seen": true, "prefix_exact_caps": true, "verbatim_text": "...", "body_verbatim": "...", "body_confidence": 0.95, "legibility": "clear", "confidence": 0.99, "source": "image", "possible_typos": [] },
+    "government_warning": { "present": true, "prefix_seen": true, "prefix_exact_caps": true, "prefix_bold": true, "verbatim_text": "...", "body_verbatim": "...", "body_confidence": 0.95, "legibility": "clear", "confidence": 0.99, "source": "image", "possible_typos": [] },
     "country_of_origin": { "value": "...", "confidence": 0.99, "evidence": "...", "source": "image" },
     "disclosures": { "value": "...", "confidence": 0.99, "evidence": "...", "source": "image" },
     "image_quality_flags": ["dense_text", "blurry"]

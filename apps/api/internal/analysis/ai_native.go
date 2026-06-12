@@ -114,6 +114,10 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 		Rule:         getRule(catalog, prefix+"net_contents"),
 	})
 
+	if valid, warning := validators.ValidateContainerSize(netFound, res.BeverageType); !valid && warning != "" {
+		res.Warnings = append(res.Warnings, warning)
+	}
+
 	// 5. Government Warning — strict verbatim check with legibility awareness
 	govPresent := res.ExtractedFields.GovernmentWarningFound
 	govStatus := models.StatusMissingOnLabel
@@ -196,6 +200,10 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 	govFoundStr := "Not found"
 	if govPresent {
 		govFoundStr = "Present"
+	}
+
+	if govWarning != nil && govWarning.PrefixSeen && !govWarning.PrefixBold {
+		res.Warnings = append(res.Warnings, "GOVERNMENT WARNING: prefix may not be in bold type as required by 27 CFR § 16.22.")
 	}
 
 	res.Fields = append(res.Fields, models.FieldCheckResult{
