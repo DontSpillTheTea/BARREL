@@ -6,10 +6,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - NODE_ENV=development
-      - VITE_API_BASE_URL=http://localhost:8080
-    volumes:
-      - ./apps/web:/app
+      NODE_ENV: production
+      VITE_API_BASE_URL: http://localhost:8080
     depends_on:
       - api
 
@@ -19,34 +17,20 @@ services:
       dockerfile: apps/api/Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - APP_ENV=development
-      - OCR_PROVIDER=worker
-      - OCR_WORKER_URL=http://ocr-worker:9090
-      - RULESET_PATH=/rules/ttb
-      - AI_PROVIDER=none
-      - MAX_UPLOAD_MB=25
+      PORT: 8080
+      RULESET_PATH: /rules/ttb
+      MAX_UPLOAD_MB: 25
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      BARREL_STORAGE_DIR: ${BARREL_STORAGE_DIR:-/tmp/barrel_storage_local}
+      AI_NATIVE_ENABLED: ${AI_NATIVE_ENABLED:-true}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-barrel-ai-native-parser}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION:-2025-01-01-preview}
+      BARREL_DEMO_USERNAME: ${BARREL_DEMO_USERNAME:-evaluator}
+      BARREL_DEMO_PASSWORD: ${BARREL_DEMO_PASSWORD:-fallback-demo-password-123}
+      BARREL_REVIEW_TOKEN: ${BARREL_REVIEW_TOKEN:-demo-eval-token}
     volumes:
       - ./rules:/rules:ro
-      - ./apps/api:/app
-    depends_on:
-      - ocr-worker
-    # TODO: Add specific command to start Go API
-
-  ocr-worker:
-    build:
-      context: apps/ocr-worker
-    environment:
-      - OCR_PROVIDER=paddleocr
-      - OCR_DEEP_PROVIDER=paddleocr
-      - OCR_DEEP_OCR_ENABLED=true
-      - OCR_WARMUP_ON_STARTUP=true
-      - OCR_REQUIRE_READY_FOR_ANALYSIS=true
-      - OCR_ALLOW_FAST_FALLBACK=false
-      - OCR_DEEP_PROVIDER_TIMEOUT_SECONDS=60
-    volumes:
-      - ./apps/ocr-worker:/app
-      - ./samples:/samples:ro
-      - ./scripts:/scripts:ro
-    # Note: Not exposing ports here to keep it internal unless debugging
-    # TODO: Add specific command to start Python worker
+    command: ["go", "run", "./cmd/server"]

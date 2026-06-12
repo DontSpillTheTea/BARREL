@@ -1,6 +1,6 @@
-variable "location" {
+variable "resource_group_name" {
   type    = string
-  default = "westus2"
+  default = "barrel-ai-rg"
 }
 
 variable "resource_prefix" {
@@ -8,19 +8,45 @@ variable "resource_prefix" {
   default = "barrel"
 }
 
+variable "env_suffix" {
+  type    = string
+  default = "dev"
+}
+
+variable "openai_account_name" {
+  type    = string
+  default = "barrel-openai-sweden"
+}
+
+variable "openai_deployment_name" {
+  type    = string
+  default = "barrel-ai-native-parser"
+}
+
+variable "azure_openai_api_version" {
+  type    = string
+  default = "2025-01-01-preview"
+}
+
 variable "container_image_api" {
   type    = string
-  default = "ghcr.io/dontspillthetea/barrel-api:latest"
+  default = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
 }
 
 variable "container_image_web" {
   type    = string
-  default = "ghcr.io/dontspillthetea/barrel-web:latest"
+  default = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
 }
 
-variable "review_token" {
+variable "vision_endpoint" {
+  type    = string
+  default = ""
+}
+
+variable "vision_key" {
   type      = string
   sensitive = true
+  default   = ""
 }
 
 variable "demo_username" {
@@ -33,43 +59,7 @@ variable "demo_password" {
   sensitive = true
 }
 
-variable "azure_vision_sku" {
-  type    = string
-  default = "F0"
-}
-
-variable "storage_container_name" {
-  type    = string
-  default = "barrel-review"
-}
-
-variable "ai_second_read_enabled" {
-  type    = bool
-  default = false
-}
-
-variable "ai_second_read_auto_on_fail" {
-  type    = bool
-  default = false
-}
-
-variable "azure_openai_endpoint" {
-  type    = string
-  default = ""
-}
-
-variable "azure_openai_api_key" {
+variable "review_token" {
   type      = string
   sensitive = true
-  default   = ""
-}
-
-variable "azure_openai_deployment" {
-  type    = string
-  default = ""
-}
-
-variable "azure_openai_api_version" {
-  type    = string
-  default = ""
 }

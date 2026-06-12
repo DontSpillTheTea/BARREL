@@ -33,7 +33,7 @@ func NewAzureOpenAIProvider(endpoint, apiKey, deployment, apiVersion string) *Az
 		APIKey:     apiKey,
 		Deployment: deployment,
 		APIVersion: apiVersion,
-		HTTPClient: &http.Client{Timeout: 20 * time.Second},
+		HTTPClient: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 

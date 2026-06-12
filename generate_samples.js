@@ -14,7 +14,7 @@ const walkSync = (dir, filelist = []) => {
   return filelist;
 };
 
-const jsonFiles = walkSync('samples/generated').filter(f => f.endsWith('.json'));
+const jsonFiles = walkSync('samples/expected').filter(f => f.endsWith('.json'));
 const out = {};
 for (const f of jsonFiles) {
   const content = fs.readFileSync(f, 'utf8');

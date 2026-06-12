@@ -12,23 +12,21 @@ This directory contains the Go API for BARREL.
 ## Endpoints
 
 * `GET /health` - API health check
-* `GET /health/ocr-worker` - Proxies health check to the OCR worker
-* `POST /api/v1/ocr/extract` - Uploads an image (PNG, JPG, JPEG) to extract raw OCR text, image quality, and OCR confidence via the worker.
-* `POST /api/v1/labels/analyze-async`: Primary image analysis endpoint. Reads the file into memory and spins up a background OCR and analysis job to avoid browser timeouts on local hardware. Returns 202 with a job ID.
+* `POST /api/v1/ocr/extract` - Uploads an image (PNG, JPG, JPEG) to extract raw OCR text and confidence via the configured OCR provider.
+* `POST /api/v1/labels/analyze-async`: Primary image analysis endpoint. Reads the file into memory and spins up a background job that either runs the AI-native parser or the debug OCR path. Returns 202 with a job ID.
 * `GET /api/v1/jobs/{job_id}`: Poll endpoint for async jobs.
-* `POST /api/v1/labels/analyze` - Combines OCR extraction and text analysis into a single pass to produce full regulatory breadcrumbs and confidence scoring.
+* `POST /api/v1/labels/analyze` - Runs the OCR-only debug path and deterministic analysis in a single pass.
 
 *Note: Rules are loaded from `rules/ttb/`. This is still a review assistant, not a final legal determination system.*
 
-## Docker Compose
-This API is designed to run within the Docker Compose stack alongside `ocr-worker`. The stack has been verified to work with Docker Compose.
+## Local Development
+This API is the active BARREL backend. For day-to-day work, run it directly with `task go` and pair it with the frontend via `task web`.
 
 ## Current Status & Endpoints
 
 - Local CORS is enabled for the Vite dev dashboard to communicate with the API.
 - Web dashboard is at `http://localhost:5173`.
 - API is at `http://localhost:8080`.
-- OCR worker remains internal-only.
-- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze`.
-- AI escalation is metadata-only (no actual AI provider is called in the current prototype).
-- Batch upload remains a future feature.
+- Single-image analysis UI exists and calls `POST /api/v1/labels/analyze-async`.
+- `ai_native` is the default analysis path.
+- Batch upload is implemented and creates one async job per image.

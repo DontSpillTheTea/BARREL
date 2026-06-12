@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 tasks:
   default:
     cmds:
@@ -17,17 +19,47 @@ tasks:
       - python3 scripts/check_env.py
 
   dev:
-    desc: Run the full stack in development mode using Docker Compose
+    desc: Run the full stack locally (requires separate terminals or a multiplexer)
     cmds:
-      - docker compose up --build
+      - echo "Use 'task up:ai' for the turnkey local stack, or run 'task go:ai' and 'task web' separately."
+
+  go:
+    desc: Run the Go API locally without Docker
+    cmds:
+      - cd apps/api && go run cmd/server/main.go
+
+  go:ai:
+    desc: Run the Go API locally with AI Native parser settings from .env
+    cmds:
+      - cd apps/api && PORT=${PORT:-8080} STORAGE_PROVIDER=${STORAGE_PROVIDER:-local} BARREL_STORAGE_DIR=${BARREL_STORAGE_DIR:-/tmp/barrel_storage_local} RULESET_PATH=${RULESET_PATH:-../../rules/ttb} AI_NATIVE_ENABLED=${AI_NATIVE_ENABLED:-true} AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT} AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY} AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-barrel-ai-native-parser} AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2025-01-01-preview} BARREL_DEMO_USERNAME=${BARREL_DEMO_USERNAME:-evaluator} BARREL_DEMO_PASSWORD=${BARREL_DEMO_PASSWORD:-fallback-demo-password-123} BARREL_REVIEW_TOKEN=${BARREL_REVIEW_TOKEN:-demo-eval-token} go run ./cmd/server
+
+  web:
+    desc: Run the frontend locally without Docker
+    cmds:
+      - cd apps/web && npm run dev
 
   up:
     desc: Run the full stack in the background
     cmds:
       - docker compose up -d --build
 
+  up:ai:
+    desc: Run the local AI-native stack in the background
+    cmds:
+      - |
+        test -n "${AZURE_OPENAI_ENDPOINT}" || (echo "AZURE_OPENAI_ENDPOINT is required in .env" && exit 1)
+        test "${AZURE_OPENAI_ENDPOINT}" != "https://<your-openai-resource>.openai.azure.com/" || (echo "AZURE_OPENAI_ENDPOINT is still the placeholder value in .env" && exit 1)
+        test -n "${AZURE_OPENAI_API_KEY}" || (echo "AZURE_OPENAI_API_KEY is required in .env" && exit 1)
+        test "${AZURE_OPENAI_API_KEY}" != "dummy" || (echo "AZURE_OPENAI_API_KEY is still set to dummy in .env" && exit 1)
+        STORAGE_PROVIDER=local BARREL_STORAGE_DIR=/tmp/barrel_storage_local AI_NATIVE_ENABLED=true AZURE_OPENAI_DEPLOYMENT=barrel-ai-native-parser AZURE_OPENAI_API_VERSION=2025-01-01-preview docker compose up -d --build api web
+
   down:
     desc: Stop the full stack
+    cmds:
+      - docker compose down
+
+  down:ai:
+    desc: Stop the local AI-native stack
     cmds:
       - docker compose down
 
@@ -40,6 +72,22 @@ tasks:
     desc: Follow logs from Docker Compose
     cmds:
       - docker compose logs -f
+
+  logs:ai:
+    desc: Follow logs for the local AI-native stack
+    cmds:
+      - docker compose logs -f api web
+
+  doctor:ai:
+    desc: Show the local AI-native settings that matter for task up:ai
+    cmds:
+      - printf "STORAGE_PROVIDER=%s\n" "${STORAGE_PROVIDER}"
+      - printf "BARREL_STORAGE_DIR=%s\n" "${BARREL_STORAGE_DIR}"
+      - printf "AI_NATIVE_ENABLED=%s\n" "${AI_NATIVE_ENABLED}"
+      - printf "AZURE_OPENAI_ENDPOINT=%s\n" "${AZURE_OPENAI_ENDPOINT}"
+      - printf "AZURE_OPENAI_API_KEY=%s\n" "$(if [ -n "${AZURE_OPENAI_API_KEY}" ] && [ "${AZURE_OPENAI_API_KEY}" != "dummy" ]; then echo set; else echo missing_or_dummy; fi)"
+      - printf "AZURE_OPENAI_DEPLOYMENT=%s\n" "${AZURE_OPENAI_DEPLOYMENT}"
+      - printf "AZURE_OPENAI_API_VERSION=%s\n" "${AZURE_OPENAI_API_VERSION}"
 
   build:
     desc: Build Docker images without starting them
@@ -62,7 +110,6 @@ tasks:
     desc: Run all tests
     cmds:
       - task test:api
-      - task test:ocr
       - task test:web
 
   test:api:
@@ -70,49 +117,11 @@ tasks:
     cmds:
       - cd apps/api && go test ./...
 
-  test:ocr:
-    desc: Run OCR worker tests
-    cmds:
-      - docker compose exec -e PYTHONPATH=/app -T ocr-worker pytest
-
-  ocr:ready:
-    desc: Check OCR readiness
-    cmds:
-      - curl -s http://localhost:8080/health/ocr-worker-ready | grep -q '"status":"ready"' || (echo "OCR not ready"; exit 1)
-      - echo "OCR is ready"
-
-  ocr:warmup:
-    desc: Wait for OCR to be ready
-    cmds:
-      - |
-        echo "Waiting for OCR worker to be ready..."
-        for i in $(seq 1 60); do
-          if curl -s http://localhost:8080/health/ocr-worker-ready | grep -q '"status":"ready"'; then
-            echo "OCR is ready!"
-            exit 0
-          fi
-          echo -n "."
-          sleep 1
-        done
-        echo "Timeout waiting for OCR."
-        exit 1
-
-  ocr:compare:
-    desc: Diagnostic script to compare OCR outputs
-    cmds:
-      - docker compose exec -e PYTHONPATH=/app -T ocr-worker python /scripts/compare_ocr.py
-
   smoke:
     desc: Run fast infrastructure smoke tests
     cmds:
       - task smoke:backend
       - task smoke:web
-
-  smoke:ocr-accurate:
-    desc: Run accurate OCR smoke checks
-    cmds:
-      - task ocr:warmup
-      - python3 scripts/smoke_ocr_accurate.py
 
   smoke:backend:
     desc: Run backend smoke checks
@@ -123,12 +132,6 @@ tasks:
     desc: Run web smoke checks
     cmds:
       - python3 scripts/smoke_web.py
-
-  smoke:async-analysis:
-    desc: Run async image analysis smoke test
-    cmds:
-      - task: ocr:warmup
-      - python3 scripts/smoke_async_analysis.py
 
   smoke:fast-api:
     desc: Test text-only API performance
@@ -194,43 +197,50 @@ tasks:
     desc: Build images for Azure Container Registry
     vars:
       ACR_SERVER:
-        sh: az acr list --query "[0].loginServer" -o tsv
+        sh: az acr list -g barrel-ai-rg --query "[0].loginServer" -o tsv
       TAG:
         sh: git rev-parse --short HEAD || echo "latest"
+      API_FQDN:
+        sh: az containerapp show -n barrel-api -g barrel-ai-rg --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "barrel-api.placeholder.azurecontainerapps.io"
     cmds:
       - echo "Building API image..."
       - docker build --platform linux/amd64 -t {{.ACR_SERVER}}/barrel-api:{{.TAG}} -f apps/api/Dockerfile .
-      - echo "Building Web image..."
-      - docker build --platform linux/amd64 --build-arg VITE_BUILD_SHA={{.TAG}} --build-arg VITE_API_BASE_URL=https://barrel-api.gentlesand-de48fa41.eastus.azurecontainerapps.io -t {{.ACR_SERVER}}/barrel-web:{{.TAG}} apps/web
+      - echo "Building Web image (API URL https://{{.API_FQDN}})..."
+      - docker build --platform linux/amd64 --build-arg VITE_BUILD_SHA={{.TAG}} --build-arg VITE_API_BASE_URL=https://{{.API_FQDN}} -t {{.ACR_SERVER}}/barrel-web:{{.TAG}} apps/web
 
   azure:deploy:
     desc: Push images to Azure Container Registry and update Container Apps
     vars:
       ACR_SERVER:
-        sh: az acr list --query "[0].loginServer" -o tsv
-      RG:
-        sh: az group list --query "[0].name" -o tsv
+        sh: az acr list -g barrel-ai-rg --query "[0].loginServer" -o tsv
       TAG:
         sh: git rev-parse --short HEAD || echo "latest"
     cmds:
       - az acr login --name {{.ACR_SERVER}}
       - docker push {{.ACR_SERVER}}/barrel-api:{{.TAG}}
       - docker push {{.ACR_SERVER}}/barrel-web:{{.TAG}}
-      - az containerapp update -n barrel-api -g {{.RG}} --image {{.ACR_SERVER}}/barrel-api:{{.TAG}}
-      - az containerapp update -n barrel-web -g {{.RG}} --image {{.ACR_SERVER}}/barrel-web:{{.TAG}}
+      - az containerapp update -n barrel-api -g barrel-ai-rg --image {{.ACR_SERVER}}/barrel-api:{{.TAG}}
+      - az containerapp update -n barrel-web -g barrel-ai-rg --image {{.ACR_SERVER}}/barrel-web:{{.TAG}}
 
-  azure:smoke:e2e:
-    desc: Run Playwright smoke tests against deployed Azure app
+  smoke:local-ai:
+    desc: Run AI Native provider tests locally
     cmds:
-      - cd apps/web && BARREL_AZURE_WEB_URL="$BARREL_AZURE_WEB_URL" npm run test:e2e
+      - BARREL_API_URL=${BARREL_API_URL:-http://localhost:${PORT:-8080}} BARREL_DEMO_USERNAME=${BARREL_DEMO_USERNAME:-evaluator} BARREL_DEMO_PASSWORD=${BARREL_DEMO_PASSWORD:-fallback-demo-password-123} python3 -u scripts/smoke_local_ai.py
+
+  playwright:local:
+    desc: Run Playwright smoke tests against local app
+    cmds:
+      - cd apps/web && npx playwright test tests/e2e/local-smoke.spec.ts
 
   azure:smoke:
     desc: Run python smoke tests against deployed Azure app
     cmds:
       - python3 -u scripts/smoke_azure.py
+
+  azure:smoke:ai-native:
+    desc: Run AI Native provider tests
+    cmds:
       - python3 -u scripts/smoke_ai_provider.py
-      - python3 -u scripts/smoke_review_history.py
-      - python3 -u scripts/smoke_batch_upload.py
 
   azure:outputs:
     desc: Show OpenTofu outputs

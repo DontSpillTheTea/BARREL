@@ -1,68 +1,91 @@
-resource "random_string" "suffix" {
-  length  = 6
-  special = false
-  upper   = false
+data "azurerm_resource_group" "main" {
+  name = var.resource_group_name
 }
 
-resource "azurerm_resource_group" "main" {
-  name     = "${var.resource_prefix}-rg-${random_string.suffix.result}"
-  location = var.location
+data "azurerm_cognitive_account" "openai" {
+  name                = var.openai_account_name
+  resource_group_name = data.azurerm_resource_group.main.name
 }
+
+data "azurerm_client_config" "current" {}
 
 resource "azurerm_log_analytics_workspace" "main" {
-  name                = "${var.resource_prefix}-law-${random_string.suffix.result}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  name                = "${var.resource_prefix}-law"
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
   sku                 = "PerGB2018"
   retention_in_days   = 30
 }
 
-resource "azurerm_cognitive_account" "vision" {
-  name                = "${var.resource_prefix}-vision-${random_string.suffix.result}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  kind                = "ComputerVision"
-  sku_name            = var.azure_vision_sku
-}
-
 resource "azurerm_storage_account" "main" {
-  name                     = "${var.resource_prefix}sa${random_string.suffix.result}"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
+  name                     = "${var.resource_prefix}sa${var.env_suffix}"
+  resource_group_name      = data.azurerm_resource_group.main.name
+  location                 = data.azurerm_resource_group.main.location
   account_tier             = "Standard"
   account_replication_type = "LRS"
 }
 
 resource "azurerm_storage_container" "reviews" {
-  name                  = "barrel-review"
+  name                  = "jobs"
   storage_account_name  = azurerm_storage_account.main.name
   container_access_type = "private"
 }
 
 resource "azurerm_container_registry" "main" {
-  name                = "${var.resource_prefix}acr${random_string.suffix.result}"
-  resource_group_name = azurerm_resource_group.main.name
-  location            = azurerm_resource_group.main.location
+  name                = "${var.resource_prefix}acr${var.env_suffix}"
+  resource_group_name = data.azurerm_resource_group.main.name
+  location            = data.azurerm_resource_group.main.location
   sku                 = "Basic"
   admin_enabled       = true
 }
 
 resource "azurerm_container_app_environment" "main" {
-  name                       = "${var.resource_prefix}-cae-${random_string.suffix.result}"
-  location                   = azurerm_resource_group.main.location
-  resource_group_name        = azurerm_resource_group.main.name
+  name                       = "${var.resource_prefix}-cae"
+  location                   = data.azurerm_resource_group.main.location
+  resource_group_name        = data.azurerm_resource_group.main.name
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+}
+
+resource "azurerm_user_assigned_identity" "api" {
+  name                = "${var.resource_prefix}-api-id"
+  location            = data.azurerm_resource_group.main.location
+  resource_group_name = data.azurerm_resource_group.main.name
 }
 
 resource "azurerm_container_app" "api" {
   name                         = "${var.resource_prefix}-api"
   container_app_environment_id = azurerm_container_app_environment.main.id
-  resource_group_name          = azurerm_resource_group.main.name
+  resource_group_name          = data.azurerm_resource_group.main.name
   revision_mode                = "Single"
+
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.api.id]
+  }
 
   secret {
     name  = "acr-password"
     value = azurerm_container_registry.main.admin_password
+  }
+  secret {
+    name  = "storage-conn-string"
+    value = azurerm_storage_account.main.primary_connection_string
+  }
+  secret {
+    name  = "azure-openai-key"
+    value = data.azurerm_cognitive_account.openai.primary_access_key
+  }
+  secret {
+    name  = "vision-key"
+    value = var.vision_key
+  }
+  secret {
+    name  = "demo-password"
+    value = var.demo_password
+  }
+  secret {
+    name  = "review-token"
+    value = var.review_token
   }
 
   registry {
@@ -79,28 +102,28 @@ resource "azurerm_container_app" "api" {
       memory = "1Gi"
 
       env {
-        name  = "STORAGE_PROVIDER"
-        value = "azure_blob"
+        name  = "PORT"
+        value = "8080"
       }
       env {
-        name  = "OCR_PROVIDER"
-        value = "azure_vision"
+        name  = "RULESET_PATH"
+        value = "/rules/ttb"
       }
       env {
-        name  = "OCR_FALLBACK_PROVIDER"
-        value = "paddleocr_worker"
+        name  = "MAX_UPLOAD_MB"
+        value = "25"
       }
       env {
-        name  = "OCR_ALLOW_FAST_FALLBACK"
-        value = "false"
+        name  = "AI_NATIVE_ENABLED"
+        value = "true"
       }
       env {
-        name  = "AI_PROVIDER"
-        value = "none"
+        name  = "BARREL_ANALYSIS_PROVIDER"
+        value = "tiered"
       }
       env {
         name  = "AZURE_VISION_ENDPOINT"
-        value = azurerm_cognitive_account.vision.endpoint
+        value = var.vision_endpoint
       }
       env {
         name        = "AZURE_VISION_KEY"
@@ -108,7 +131,27 @@ resource "azurerm_container_app" "api" {
       }
       env {
         name  = "AZURE_VISION_API_VERSION"
-        value = "2023-10-01" # Using standard vision API version
+        value = "2024-02-01"
+      }
+      env {
+        name  = "AZURE_OPENAI_ENDPOINT"
+        value = data.azurerm_cognitive_account.openai.endpoint
+      }
+      env {
+        name        = "AZURE_OPENAI_API_KEY"
+        secret_name = "azure-openai-key"
+      }
+      env {
+        name  = "AZURE_OPENAI_DEPLOYMENT"
+        value = var.openai_deployment_name
+      }
+      env {
+        name  = "AZURE_OPENAI_API_VERSION"
+        value = var.azure_openai_api_version
+      }
+      env {
+        name  = "STORAGE_PROVIDER"
+        value = "azure_blob"
       }
       env {
         name  = "AZURE_STORAGE_ACCOUNT"
@@ -134,52 +177,7 @@ resource "azurerm_container_app" "api" {
         name        = "BARREL_REVIEW_TOKEN"
         secret_name = "review-token"
       }
-      env {
-        name  = "AI_SECOND_READ_ENABLED"
-        value = var.ai_second_read_enabled ? "true" : "false"
-      }
-      env {
-        name  = "AI_SECOND_READ_AUTO_ON_FAIL"
-        value = var.ai_second_read_auto_on_fail ? "true" : "false"
-      }
-      env {
-        name  = "AZURE_OPENAI_ENDPOINT"
-        value = var.azure_openai_endpoint
-      }
-      env {
-        name        = "AZURE_OPENAI_API_KEY"
-        secret_name = "azure-openai-key"
-      }
-      env {
-        name  = "AZURE_OPENAI_DEPLOYMENT"
-        value = var.azure_openai_deployment
-      }
-      env {
-        name  = "AZURE_OPENAI_API_VERSION"
-        value = var.azure_openai_api_version
-      }
     }
-  }
-
-  secret {
-    name  = "storage-conn-string"
-    value = azurerm_storage_account.main.primary_connection_string
-  }
-  secret {
-    name  = "vision-key"
-    value = azurerm_cognitive_account.vision.primary_access_key
-  }
-  secret {
-    name  = "azure-openai-key"
-    value = var.azure_openai_api_key != "" ? var.azure_openai_api_key : "dummy"
-  }
-  secret {
-    name  = "demo-password"
-    value = var.demo_password
-  }
-  secret {
-    name  = "review-token"
-    value = var.review_token
   }
 
   ingress {
@@ -195,7 +193,7 @@ resource "azurerm_container_app" "api" {
 resource "azurerm_container_app" "web" {
   name                         = "${var.resource_prefix}-web"
   container_app_environment_id = azurerm_container_app_environment.main.id
-  resource_group_name          = azurerm_resource_group.main.name
+  resource_group_name          = data.azurerm_resource_group.main.name
   revision_mode                = "Single"
 
   secret {
@@ -215,6 +213,7 @@ resource "azurerm_container_app" "web" {
       image  = var.container_image_web
       cpu    = 0.25
       memory = "0.5Gi"
+
       env {
         name  = "VITE_API_BASE_URL"
         value = "https://${azurerm_container_app.api.ingress[0].fqdn}"
@@ -233,11 +232,42 @@ resource "azurerm_container_app" "web" {
 }
 
 resource "azurerm_key_vault" "main" {
-  name                = "${var.resource_prefix}-kv-${random_string.suffix.result}"
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
-  tenant_id           = data.azurerm_client_config.current.tenant_id
-  sku_name            = "standard"
+  name                     = "${var.resource_prefix}-kv-${var.env_suffix}"
+  location                 = data.azurerm_resource_group.main.location
+  resource_group_name      = data.azurerm_resource_group.main.name
+  tenant_id                = data.azurerm_client_config.current.tenant_id
+  sku_name                 = "standard"
+  purge_protection_enabled = false
+
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = data.azurerm_client_config.current.object_id
+    secret_permissions = ["Set", "Get", "Delete", "Purge", "Recover", "List"]
+  }
+
+  access_policy {
+    tenant_id          = data.azurerm_client_config.current.tenant_id
+    object_id          = azurerm_user_assigned_identity.api.principal_id
+    secret_permissions = ["Get"]
+  }
 }
 
-data "azurerm_client_config" "current" {}
+output "web_url" {
+  value = "https://${azurerm_container_app.web.ingress[0].fqdn}"
+}
+
+output "api_url" {
+  value = "https://${azurerm_container_app.api.ingress[0].fqdn}"
+}
+
+output "acr_server" {
+  value = azurerm_container_registry.main.login_server
+}
+
+output "storage_account" {
+  value = azurerm_storage_account.main.name
+}
+
+output "key_vault_name" {
+  value = azurerm_key_vault.main.name
+}

@@ -1,1 +1,501 @@
-{}
+{
+  "bad_01_missing_warning": {
+    "case_id": "B01",
+    "filename": "bad_01_missing_warning.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "missing government warning",
+    "expected_fields": {
+      "brand_name": "OLD TOM DISTILLERY",
+      "class_type": "Kentucky Straight Bourbon Whiskey",
+      "alcohol_content": "45% Alc./Vol. (90 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": false
+    },
+    "notes": "Omit government warning"
+  },
+  "bad_02_wrong_warning_heading_case": {
+    "case_id": "B02",
+    "filename": "bad_02_wrong_warning_heading_case.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "government warning heading case",
+    "expected_fields": {
+      "brand_name": "BARREL HOUSE NO. 7",
+      "class_type": "Straight Bourbon Whiskey",
+      "alcohol_content": "50% Alc./Vol. (100 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Change GOVERNMENT WARNING: to Government Warning:"
+  },
+  "bad_03_warning_wrong_wording": {
+    "case_id": "B03",
+    "filename": "bad_03_warning_wrong_wording.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "altered warning wording",
+    "expected_fields": {
+      "brand_name": "SILVER BRIDGE VODKA",
+      "class_type": "Vodka",
+      "alcohol_content": "40% Alc./Vol. (80 Proof)",
+      "net_contents": "1 L",
+      "government_warning_present": true
+    },
+    "notes": "Warning wording altered"
+  },
+  "bad_04_missing_abv": {
+    "case_id": "B04",
+    "filename": "bad_04_missing_abv.png",
+    "category": "bad",
+    "beverage_type": "wine",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "missing alcohol content",
+    "expected_fields": {
+      "brand_name": "PINE RIDGE CELLARS",
+      "class_type": "Red Wine",
+      "alcohol_content": "13.5% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Omit alcohol content",
+    "known_label_fields": {
+      "alcohol_content": null
+    }
+  },
+  "bad_05_abv_mismatch": {
+    "case_id": "B05",
+    "filename": "bad_05_abv_mismatch.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "ABV mismatch",
+    "expected_fields": {
+      "brand_name": "OLD TOM DISTILLERY",
+      "class_type": "Kentucky Straight Bourbon Whiskey",
+      "alcohol_content": "45% Alc./Vol. (90 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Label alcohol content differs",
+    "known_label_fields": {
+      "alcohol_content": "40% Alc./Vol. (80 Proof)"
+    }
+  },
+  "bad_06_missing_net_contents": {
+    "case_id": "B06",
+    "filename": "bad_06_missing_net_contents.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "missing net contents",
+    "expected_fields": {
+      "brand_name": "CASK & COMPASS",
+      "class_type": "Blended Scotch Whisky",
+      "alcohol_content": "43% Alc./Vol. (86 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Omit net contents",
+    "known_label_fields": {
+      "net_contents": null
+    }
+  },
+  "bad_07_brand_mismatch": {
+    "case_id": "B07",
+    "filename": "bad_07_brand_mismatch.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "brand mismatch",
+    "expected_fields": {
+      "brand_name": "OLD TOM DISTILLERY",
+      "class_type": "Kentucky Straight Bourbon Whiskey",
+      "alcohol_content": "45% Alc./Vol. (90 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Brand mismatch",
+    "known_label_fields": {
+      "brand_name": "COPPER FOX HOLLOW"
+    }
+  },
+  "bad_08_class_type_mismatch": {
+    "case_id": "B08",
+    "filename": "bad_08_class_type_mismatch.png",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "class/type mismatch",
+    "expected_fields": {
+      "brand_name": "BARREL HOUSE NO. 7",
+      "class_type": "Straight Bourbon Whiskey",
+      "alcohol_content": "50% Alc./Vol. (100 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Class type mismatch",
+    "known_label_fields": {
+      "class_type": "Vodka"
+    }
+  },
+  "bad_09_unreadably_blurry": {
+    "case_id": "B09",
+    "filename": "bad_09_unreadably_blurry.jpg",
+    "category": "bad",
+    "beverage_type": "wine",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "unreadable image",
+    "expected_fields": {
+      "brand_name": "NORTHSTAR BOTTLING CO.",
+      "class_type": "White Wine",
+      "alcohol_content": "12.8% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Extremely blurry"
+  },
+  "bad_10_extreme_crop_missing_fields": {
+    "case_id": "B10",
+    "filename": "bad_10_extreme_crop_missing_fields.jpg",
+    "category": "bad",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Likely Fail",
+    "primary_test_axis": "crop removes required fields",
+    "expected_fields": {
+      "brand_name": "BLACK MAPLE RESERVE",
+      "class_type": "Dark Rum",
+      "alcohol_content": "42% Alc./Vol. (84 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Crop out bottom half",
+    "known_label_fields": {
+      "net_contents": null,
+      "government_warning_present": false
+    }
+  },
+  "good_01_distilled_spirits_clean_front": {
+    "case_id": "G01",
+    "filename": "good_01_distilled_spirits_clean_front.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "clean baseline",
+    "expected_fields": {
+      "brand_name": "OLD TOM DISTILLERY",
+      "class_type": "Kentucky Straight Bourbon Whiskey",
+      "alcohol_content": "45% Alc./Vol. (90 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Clean baseline distilled spirits label with all required prototype fields visible."
+  },
+  "good_02_bourbon_proof_and_abv": {
+    "case_id": "G02",
+    "filename": "good_02_bourbon_proof_and_abv.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "proof and ABV extraction",
+    "expected_fields": {
+      "brand_name": "BARREL HOUSE NO. 7",
+      "class_type": "Straight Bourbon Whiskey",
+      "alcohol_content": "50% Alc./Vol. (100 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Clean label, ABV and proof on same line, high contrast"
+  },
+  "good_03_vodka_metric_net_contents": {
+    "case_id": "G03",
+    "filename": "good_03_vodka_metric_net_contents.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "metric net contents",
+    "expected_fields": {
+      "brand_name": "SILVER BRIDGE VODKA",
+      "class_type": "Vodka",
+      "alcohol_content": "40% Alc./Vol. (80 Proof)",
+      "net_contents": "1 L",
+      "government_warning_present": true
+    },
+    "notes": "Minimalist white label, crisp sans-serif text"
+  },
+  "good_04_wine_abv_decimal": {
+    "case_id": "G04",
+    "filename": "good_04_wine_abv_decimal.png",
+    "category": "good",
+    "beverage_type": "wine",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "decimal ABV",
+    "expected_fields": {
+      "brand_name": "PINE RIDGE CELLARS",
+      "class_type": "Red Wine",
+      "alcohol_content": "13.5% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Elegant but readable wine label"
+  },
+  "good_05_beer_abv_low_value": {
+    "case_id": "G05",
+    "filename": "good_05_beer_abv_low_value.png",
+    "category": "good",
+    "beverage_type": "malt_beverage",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "lower ABV beer label",
+    "expected_fields": {
+      "brand_name": "RIVER MALT BREWING",
+      "class_type": "Lager Beer",
+      "alcohol_content": "5.2% Alc./Vol.",
+      "net_contents": "12 fl oz",
+      "government_warning_present": true
+    },
+    "notes": "Beer can label style"
+  },
+  "good_06_import_country_origin": {
+    "case_id": "G06",
+    "filename": "good_06_import_country_origin.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "country of origin present",
+    "expected_fields": {
+      "brand_name": "CASK & COMPASS",
+      "class_type": "Blended Scotch Whisky",
+      "alcohol_content": "43% Alc./Vol. (86 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Classic spirits import label"
+  },
+  "good_07_brand_case_variation": {
+    "case_id": "G07",
+    "filename": "good_07_brand_case_variation.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "fuzzy brand casing",
+    "expected_fields": {
+      "brand_name": "Stone's Throw Spirits",
+      "class_type": "Rye Whiskey",
+      "alcohol_content": "46% Alc./Vol. (92 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Brand appears as uppercase on label"
+  },
+  "good_08_brand_punctuation_variation": {
+    "case_id": "G08",
+    "filename": "good_08_brand_punctuation_variation.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "punctuation normalization",
+    "expected_fields": {
+      "brand_name": "Cask and Compass",
+      "class_type": "American Single Malt Whiskey",
+      "alcohol_content": "47% Alc./Vol. (94 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Label shows & instead of and"
+  },
+  "good_09_warning_on_back_label": {
+    "case_id": "G09",
+    "filename": "good_09_warning_on_back_label.png",
+    "category": "good",
+    "beverage_type": "wine",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "warning lower/back label placement",
+    "expected_fields": {
+      "brand_name": "NORTHSTAR BOTTLING CO.",
+      "class_type": "White Wine",
+      "alcohol_content": "12.8% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Back-label style with dense text"
+  },
+  "good_10_dense_but_readable_label": {
+    "case_id": "G10",
+    "filename": "good_10_dense_but_readable_label.png",
+    "category": "good",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Pass",
+    "primary_test_axis": "dense readable label",
+    "expected_fields": {
+      "brand_name": "BLACK MAPLE RESERVE",
+      "class_type": "Dark Rum",
+      "alcohol_content": "42% Alc./Vol. (84 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Dense label with many text blocks"
+  },
+  "mediocre_01_slight_blur": {
+    "case_id": "M01",
+    "filename": "mediocre_01_slight_blur.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "mild blur",
+    "expected_fields": {
+      "brand_name": "OLD TOM DISTILLERY",
+      "class_type": "Kentucky Straight Bourbon Whiskey",
+      "alcohol_content": "45% Alc./Vol. (90 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Slightly blurred"
+  },
+  "mediocre_02_strong_blur": {
+    "case_id": "M02",
+    "filename": "mediocre_02_strong_blur.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "stronger blur",
+    "expected_fields": {
+      "brand_name": "BARREL HOUSE NO. 7",
+      "class_type": "Straight Bourbon Whiskey",
+      "alcohol_content": "50% Alc./Vol. (100 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Noticeably blurred"
+  },
+  "mediocre_03_slight_rotation": {
+    "case_id": "M03",
+    "filename": "mediocre_03_slight_rotation.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "skew",
+    "expected_fields": {
+      "brand_name": "SILVER BRIDGE VODKA",
+      "class_type": "Vodka",
+      "alcohol_content": "40% Alc./Vol. (80 Proof)",
+      "net_contents": "1 L",
+      "government_warning_present": true
+    },
+    "notes": "10 degree rotation"
+  },
+  "mediocre_04_perspective_angle": {
+    "case_id": "M04",
+    "filename": "mediocre_04_perspective_angle.jpg",
+    "category": "mediocre",
+    "beverage_type": "wine",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "perspective distortion",
+    "expected_fields": {
+      "brand_name": "PINE RIDGE CELLARS",
+      "class_type": "Red Wine",
+      "alcohol_content": "13.5% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Perspective trapezoid distortion"
+  },
+  "mediocre_05_low_contrast": {
+    "case_id": "M05",
+    "filename": "mediocre_05_low_contrast.png",
+    "category": "mediocre",
+    "beverage_type": "malt_beverage",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "low contrast",
+    "expected_fields": {
+      "brand_name": "RIVER MALT BREWING",
+      "class_type": "Lager Beer",
+      "alcohol_content": "5.2% Alc./Vol.",
+      "net_contents": "12 fl oz",
+      "government_warning_present": true
+    },
+    "notes": "Beige background with light gray text"
+  },
+  "mediocre_06_glare_over_warning": {
+    "case_id": "M06",
+    "filename": "mediocre_06_glare_over_warning.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "glare over warning",
+    "expected_fields": {
+      "brand_name": "CASK & COMPASS",
+      "class_type": "Blended Scotch Whisky",
+      "alcohol_content": "43% Alc./Vol. (86 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Light glare crosses warning"
+  },
+  "mediocre_07_shadow_over_abv": {
+    "case_id": "M07",
+    "filename": "mediocre_07_shadow_over_abv.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "shadow over alcohol content",
+    "expected_fields": {
+      "brand_name": "Stone's Throw Spirits",
+      "class_type": "Rye Whiskey",
+      "alcohol_content": "46% Alc./Vol. (92 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Shadow darkens ABV area"
+  },
+  "mediocre_08_small_warning_text": {
+    "case_id": "M08",
+    "filename": "mediocre_08_small_warning_text.png",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "tiny warning",
+    "expected_fields": {
+      "brand_name": "Cask and Compass",
+      "class_type": "American Single Malt Whiskey",
+      "alcohol_content": "47% Alc./Vol. (94 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Warning text is very small"
+  },
+  "mediocre_09_curved_bottle_photo": {
+    "case_id": "M09",
+    "filename": "mediocre_09_curved_bottle_photo.jpg",
+    "category": "mediocre",
+    "beverage_type": "wine",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "curved bottle photo",
+    "expected_fields": {
+      "brand_name": "NORTHSTAR BOTTLING CO.",
+      "class_type": "White Wine",
+      "alcohol_content": "12.8% Alc./Vol.",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Label wrapped on bottle"
+  },
+  "mediocre_10_partial_crop_edges": {
+    "case_id": "M10",
+    "filename": "mediocre_10_partial_crop_edges.jpg",
+    "category": "mediocre",
+    "beverage_type": "distilled_spirits",
+    "expected_overall_status": "Needs Review",
+    "primary_test_axis": "partial crop",
+    "expected_fields": {
+      "brand_name": "BLACK MAPLE RESERVE",
+      "class_type": "Dark Rum",
+      "alcohol_content": "42% Alc./Vol. (84 Proof)",
+      "net_contents": "750 mL",
+      "government_warning_present": true
+    },
+    "notes": "Cropped slightly at edges"
+  }
+}

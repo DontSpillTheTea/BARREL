@@ -21,16 +21,8 @@ def check_command(cmd, name, optional=False, required_for_demo=False):
 def main():
     print("Checking local tooling...")
     print("--- Required for preferred demo path ---")
-    check_command("docker", "Docker", required_for_demo=True)
-    check_command("docker-compose", "Docker Compose", required_for_demo=True) # or `docker compose` which is plugin, handled below
-    if not shutil.which("docker-compose"):
-        # check if docker compose plugin exists
-        try:
-            subprocess.check_output(["docker", "compose", "version"], stderr=subprocess.STDOUT)
-            print("[x] Docker Compose plugin found")
-        except:
-            print("[ ] Docker Compose plugin missing")
     check_command("task", "Task", required_for_demo=True)
+    check_command("az", "Azure CLI", required_for_demo=True)
     
     print("\n--- Optional / Native tools ---")
     check_command("python3", "Python")
@@ -38,7 +30,7 @@ def main():
     check_command("go", "Go")
     check_command("node", "Node")
     check_command("npm", "npm")
-    check_command("tesseract", "Tesseract", optional=True)
+    check_command("docker", "Docker", optional=True)
 
 if __name__ == "__main__":
     main()

@@ -32,3 +32,8 @@ output/
 data/
 .terragrunt-cache/
 test_vision.py
+
+# Agents
+.agents/
+sweden_quota.json
+.claude/

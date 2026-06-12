@@ -29,7 +29,7 @@ def main():
         files = {"file": f}
         data = {
             "beverage_type": "distilled_spirits",
-            "ocr_provider": "azure_vision",
+            "ocr_provider": "ai_native",
             "expected_json": json.dumps({"brand_name": "TEST"})
         }
         r = requests.post(f"{api_url}/api/v1/labels/analyze-async", files=files, data=data, headers=headers)
@@ -79,7 +79,8 @@ def main():
         
         matched_rev = next((rev for rev in reviews if str(rev.get("job_id", rev.get("id"))) == str(job_id)), None)
         assert matched_rev["filename"], "History missing filename"
-        assert matched_rev["ocr_provider"], "History missing provider"
+        assert matched_rev["provider_requested"] == "ai_native", "History missing requested provider"
+        assert matched_rev["provider_used"], "History missing provider used"
         assert matched_rev["overall_status"], "History missing status"
         
         print(f"Checking detail endpoint for {job_id}...")

@@ -114,7 +114,7 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 		Rule:         getRule(catalog, prefix+"net_contents"),
 	})
 
-	// 5. Government Warning — strict verbatim check
+	// 5. Government Warning — strict verbatim check with legibility awareness
 	govPresent := res.ExtractedFields.GovernmentWarningFound
 	govStatus := models.StatusMissingOnLabel
 	govConf := 0
@@ -122,13 +122,36 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 	var govDiff *models.GovWarningComparison
 	govSim := 0.0
 
+	var govWarning *models.AIGovernmentWarning
 	verbatimText := ""
 	if aiCandidates != nil {
-		verbatimText = aiCandidates.GovernmentWarning.VerbatimText
+		govWarning = &aiCandidates.GovernmentWarning
+		verbatimText = govWarning.VerbatimText
+		if govWarning.BodyVerbatim != "" {
+			verbatimText = govWarning.BodyVerbatim
+			if govWarning.PrefixExactCaps {
+				verbatimText = "GOVERNMENT WARNING: " + verbatimText
+			} else if govWarning.PrefixSeen {
+				verbatimText = "Government Warning: " + verbatimText
+			}
+		}
 	}
 
 	if res.ExpectedFields.GovernmentWarningPresent {
-		if govPresent && verbatimText != "" {
+		if govWarning != nil && govWarning.Legibility == "illegible" {
+			govStatus = models.StatusUncertain
+			govConf = 30
+			govExplanation = "Government warning area detected but text is illegible. Cannot verify compliance."
+		} else if govWarning != nil && govWarning.Legibility == "partial" && govWarning.BodyConfidence < 0.5 {
+			govStatus = models.StatusUncertain
+			govConf = 50
+			govExplanation = "Government warning partially legible. Body text confidence too low for reliable comparison."
+		} else if govWarning != nil && govWarning.PrefixSeen && !govWarning.PrefixExactCaps {
+			govStatus = models.StatusMismatch
+			govConf = 90
+			govExplanation = "Government warning prefix is not in required ALL CAPS format per 27 CFR § 16.21."
+			res.Warnings = append(res.Warnings, "GOVERNMENT WARNING: prefix must be all uppercase.")
+		} else if govPresent && verbatimText != "" {
 			comparison := validators.CompareGovernmentWarningVerbatim(verbatimText)
 			govDiff = &comparison
 			govSim = comparison.Similarity
@@ -139,8 +162,8 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 			} else if comparison.Similarity < 0.6 {
 				govStatus = models.StatusMismatch
 				govConf = 90
-				govExplanation = "Government warning text appears to be nonsense or AI-generated. Character similarity too low."
-				res.Warnings = append(res.Warnings, "Government warning text has very low similarity to statutory requirement.")
+				govExplanation = "Government warning text appears to be pseudo-text or hallucinated. Character similarity too low."
+				res.Warnings = append(res.Warnings, "Government warning body text has very low similarity to statutory requirement. Possible AI-generated or corrupted text.")
 			} else {
 				govStatus = models.StatusMismatch
 				govConf = 85
@@ -149,10 +172,10 @@ func AnalyzeAI(res models.LabelAnalysisResult, catalog *rules.Catalog) models.La
 		} else if govPresent {
 			govStatus = models.StatusUncertain
 			govConf = 70
-			govExplanation = "Government warning detected but verbatim text could not be extracted."
+			govExplanation = "Government warning prefix detected but body text could not be extracted for strict comparison."
 		} else {
 			govConf = 90
-			govExplanation = "Government warning was expected but AI did not detect it."
+			govExplanation = "Government warning was expected but not detected on the label."
 		}
 	} else {
 		if govPresent {

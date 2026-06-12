@@ -44,16 +44,27 @@ type RuleBreadcrumb struct {
 }
 
 type FieldCheckResult struct {
-	Field          string                `json:"field"`
-	Expected       interface{}           `json:"expected"`
-	Found          interface{}           `json:"found"`
-	Status         string                `json:"status"`
-	Confidence     int                   `json:"confidence"`
-	Similarity     float64               `json:"similarity,omitempty"`
-	AIConfidence   float64               `json:"ai_confidence,omitempty"`
-	Explanation    string                `json:"explanation"`
-	Rule           RuleBreadcrumb        `json:"rule"`
-	GovWarningDiff *GovWarningComparison `json:"gov_warning_diff,omitempty"`
+	Field            string                `json:"field"`
+	Expected         interface{}           `json:"expected"`
+	Found            interface{}           `json:"found"`
+	Status           string                `json:"status"`
+	Confidence       int                   `json:"confidence"`
+	Similarity       float64               `json:"similarity,omitempty"`
+	AIConfidence     float64               `json:"ai_confidence,omitempty"`
+	OcrConfidence    float64               `json:"ocr_confidence,omitempty"`
+	ParserConfidence float64               `json:"parser_confidence,omitempty"`
+	Source           string                `json:"source,omitempty"`
+	Explanation      string                `json:"explanation"`
+	Rule             RuleBreadcrumb        `json:"rule"`
+	GovWarningDiff   *GovWarningComparison `json:"gov_warning_diff,omitempty"`
+}
+
+type PipelineTimings struct {
+	OcrTimeMs        int64 `json:"ocr_time_ms,omitempty"`
+	TextParseTimeMs  int64 `json:"text_parse_time_ms,omitempty"`
+	ValidationTimeMs int64 `json:"validation_time_ms,omitempty"`
+	AINativeTimeMs   int64 `json:"ai_native_time_ms,omitempty"`
+	TotalTimeMs      int64 `json:"total_time_ms"`
 }
 
 type AIEscalation struct {
@@ -72,12 +83,17 @@ type AIExtractedField struct {
 }
 
 type AIGovernmentWarning struct {
-	Present         bool    `json:"present"`
-	VerbatimText    string  `json:"verbatim_text,omitempty"`
-	Confidence      float64 `json:"confidence"`
-	PossibleTypos   []string`json:"possible_typos,omitempty"`
-	Source          string  `json:"source"`
-	ReasonIfMissing string  `json:"reason_if_missing,omitempty"`
+	Present         bool     `json:"present"`
+	VerbatimText    string   `json:"verbatim_text,omitempty"`
+	Confidence      float64  `json:"confidence"`
+	PossibleTypos   []string `json:"possible_typos,omitempty"`
+	Source          string   `json:"source"`
+	ReasonIfMissing string   `json:"reason_if_missing,omitempty"`
+	PrefixSeen      bool     `json:"prefix_seen,omitempty"`
+	PrefixExactCaps bool     `json:"prefix_exact_caps,omitempty"`
+	BodyVerbatim    string   `json:"body_verbatim,omitempty"`
+	BodyConfidence  float64  `json:"body_confidence,omitempty"`
+	Legibility      string   `json:"legibility,omitempty"`
 }
 
 type AIAlcoholContent struct {
@@ -127,6 +143,10 @@ type LabelAnalysisResult struct {
 	OCRText           string                 `json:"ocr_text,omitempty"`
 	OCR               *providers.OCRResult   `json:"ocr,omitempty"`
 	ImageQualityFlags []string               `json:"image_quality_flags,omitempty"`
+	ProviderPath      string                 `json:"provider_path,omitempty"`
+	Escalated         bool                   `json:"escalated,omitempty"`
+	EscalationReasons []string               `json:"escalation_reasons,omitempty"`
+	Timings           *PipelineTimings       `json:"timings,omitempty"`
 	Warnings          []string               `json:"warnings"`
 }
 

@@ -51,6 +51,16 @@ func main() {
 		log.Println("Azure OpenAI credentials missing or dummy; using Mock AI provider.")
 	}
 
+	var textParser *ai.TextParserProvider
+	if cfg.AzureOpenAIEndpoint != "" && cfg.AzureOpenAIAPIKey != "" && cfg.AzureOpenAIAPIKey != "dummy" {
+		tpDeployment := cfg.TextParserDeployment
+		if tpDeployment == "" {
+			tpDeployment = cfg.AzureOpenAIDeployment
+		}
+		textParser = ai.NewTextParserProvider(cfg.AzureOpenAIEndpoint, cfg.AzureOpenAIAPIKey, tpDeployment, cfg.AzureOpenAIAPIVersion)
+		log.Printf("Text parser configured (deployment: %s)", tpDeployment)
+	}
+
 	jobStore := jobs.NewStore()
 	storageProvider := storage.NewProvider()
 	log.Printf("Using storage provider: %T", storageProvider)
@@ -258,7 +268,7 @@ func main() {
 
 		provider := r.FormValue("ocr_provider")
 		if provider == "" {
-			provider = "ai_native"
+			provider = cfg.AnalysisProvider
 		}
 		var expected models.ExpectedLabelFields
 		if expectedStr := r.FormValue("expected_json"); expectedStr != "" {
@@ -294,7 +304,7 @@ func main() {
 						"filename": zf.Name,
 					})
 
-					go processJob(job.ID, zf.Name, provider, beverageType, expected, zBuf.Bytes(), jobStore, ocrManager, catalog, aiProvider, cfg, storageProvider)
+					go processJob(job.ID, zf.Name, provider, beverageType, expected, zBuf.Bytes(), jobStore, ocrManager, catalog, aiProvider, textParser, cfg, storageProvider)
 				}
 			}
 			w.WriteHeader(http.StatusAccepted)
@@ -316,7 +326,7 @@ func main() {
 			"poll_url": "/api/v1/jobs/" + job.ID,
 		})
 
-		go processJob(job.ID, header.Filename, provider, beverageType, expected, buf.Bytes(), jobStore, ocrManager, catalog, aiProvider, cfg, storageProvider)
+		go processJob(job.ID, header.Filename, provider, beverageType, expected, buf.Bytes(), jobStore, ocrManager, catalog, aiProvider, textParser, cfg, storageProvider)
 	}))
 
 	http.HandleFunc("/api/v1/jobs/", security.RequireToken(func(w http.ResponseWriter, r *http.Request) {
@@ -359,8 +369,8 @@ func main() {
 		}
 		records, err := storageProvider.ListReviews(r.Context())
 		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			return
+			log.Printf("ListReviews storage error: %v, using in-memory jobs only", err)
+			records = []storage.ReviewRecord{}
 		}
 		liveJobs := jobStore.ListJobs()
 		log.Printf("reviews route: persisted=%d live_jobs=%d", len(records), len(liveJobs))
@@ -582,7 +592,7 @@ func detailFromJob(job *jobs.Job) models.ReviewDetail {
 	return detail
 }
 
-func processJob(jobID, filename, provider string, beverageType string, expected models.ExpectedLabelFields, fileData []byte, jobStore *jobs.Store, ocrManager *ocr.Manager, catalog *rules.Catalog, aiProvider ai.Provider, cfg config.Config, storageProvider storage.Provider) {
+func processJob(jobID, filename, provider string, beverageType string, expected models.ExpectedLabelFields, fileData []byte, jobStore *jobs.Store, ocrManager *ocr.Manager, catalog *rules.Catalog, aiProvider ai.Provider, textParser *ai.TextParserProvider, cfg config.Config, storageProvider storage.Provider) {
 	startTime := time.Now()
 	jobStore.UpdateJobStatus(jobID, jobs.StatusProcessing)
 	log.Printf("Processing job %s with requested provider=%s aiProviderType=%T storageProviderType=%T", jobID, provider, aiProvider, storageProvider)
@@ -595,6 +605,32 @@ func processJob(jobID, filename, provider string, beverageType string, expected 
 	ctx := context.Background()
 	if err := storageProvider.SaveImage(ctx, jobID, fileData); err != nil {
 		log.Printf("failed to save image for job %s: %v", jobID, err)
+	}
+
+	if provider == "tiered" {
+		tieredInput := analysis.TieredInput{
+			Filename:                filename,
+			ContentType:             "application/octet-stream",
+			ImageBytes:              fileData,
+			ExpectedFields:          expected,
+			BeverageType:            beverageType,
+			OcrManager:              ocrManager,
+			TextParser:              textParser,
+			AIProvider:              aiProvider,
+			Catalog:                 catalog,
+			OcrProvider:             "azure_vision_ocr",
+			EscalationEnabled:       cfg.EscalationEnabled,
+			OcrMinConfidence:        cfg.OcrMinConfidence,
+			FieldMinConfidence:      cfg.FieldMinConfidence,
+			GovWarningMinSimilarity: cfg.GovWarningMinSimilarity,
+		}
+		res := analysis.AnalyzeTiered(ctx, tieredInput)
+		res.Filename = filename
+		if err := storageProvider.SaveResult(ctx, jobID, &res); err != nil {
+			log.Printf("failed to save result for job %s: %v", jobID, err)
+		}
+		jobStore.SucceedJob(jobID, &res)
+		return
 	}
 
 	if provider == "ai_native" && !cfg.AINativeEnabled {

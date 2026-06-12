@@ -136,7 +136,7 @@ function App() {
 
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('ocr_provider', 'ai_native')
+    // Let server decide provider based on BARREL_ANALYSIS_PROVIDER config
     formData.append('beverage_type', expectedFields.beverage_type)
     formData.append('expected_json', JSON.stringify({
       brand_name: expectedFields.brand_name,
@@ -220,13 +220,34 @@ function App() {
     } catch (err) { setError(err.message || 'Failed to load detail') }
   }
 
-  // Processing time badge
-  const renderTimeBadge = () => {
-    const ms = result?.result?.processing_time_ms
+  const PROVIDER_PATH_LABELS = {
+    'ocr_only': { label: 'OCR Fast Path', cls: 'badge-success' },
+    'ocr_then_ai_native': { label: 'OCR + AI Vision', cls: 'badge-info' },
+    'ai_native_only': { label: 'AI Native', cls: 'badge-warning' },
+  }
+
+  const renderProviderBadge = () => {
+    const path = result?.result?.provider_path
+    const info = PROVIDER_PATH_LABELS[path]
+    if (info) return <span className={`badge ${info.cls}`}>{info.label}</span>
+    return null
+  }
+
+  const renderTimingBreakdown = () => {
+    const t = result?.result?.timings
+    const ms = t?.total_time_ms || result?.result?.processing_time_ms
     if (!ms) return null
     const sec = (ms / 1000).toFixed(1)
     const cls = ms < 5000 ? 'badge-success' : ms < 10000 ? 'badge-warning' : 'badge-error'
-    return <span className={`badge ${cls}`}>{sec}s</span>
+    let detail = ''
+    if (t) {
+      const parts = []
+      if (t.ocr_time_ms) parts.push(`OCR: ${(t.ocr_time_ms/1000).toFixed(1)}s`)
+      if (t.text_parse_time_ms) parts.push(`Parse: ${(t.text_parse_time_ms/1000).toFixed(1)}s`)
+      if (t.ai_native_time_ms) parts.push(`AI: ${(t.ai_native_time_ms/1000).toFixed(1)}s`)
+      if (parts.length) detail = ` (${parts.join(' | ')})`
+    }
+    return <span className={`badge ${cls}`} title={detail}>{sec}s{detail}</span>
   }
 
   // Gov warning diff renderer
@@ -382,9 +403,15 @@ function App() {
               <div className="decision-meta">
                 <span className={`badge ${isOverallMatch ? 'badge-success' : 'badge-error'} status-badge`}>{overallStatus}</span>
                 <span className={`badge ${isOverallMatch ? 'badge-success' : 'badge-warning'}`}>{result.result?.overall_confidence || 0}%</span>
-                {renderTimeBadge()}
+                {renderProviderBadge()}
+                {renderTimingBreakdown()}
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-light)' }}>{result.summary?.filename}</span>
               </div>
+              {result.result?.escalated && result.result?.escalation_reasons?.length > 0 && (
+                <div className="alert alert-info" style={{ margin: '0.5rem 0 0 0', padding: '0.5rem 0.75rem', fontSize: '0.8rem' }}>
+                  Escalated to AI vision: {result.result.escalation_reasons.join('; ')}
+                </div>
+              )}
               <div className="decision-actions">
                 <textarea className="form-control decision-notes" placeholder="Review notes..." value={decisionNotes} onChange={e => setDecisionNotes(e.target.value)} />
                 <button className="btn btn-approve" onClick={() => submitDecision('approved')}>Approve</button>
@@ -459,6 +486,7 @@ function App() {
                         {field.similarity > 0 && <div style={{ fontWeight: '500' }}>{Math.round(field.similarity * 100)}% sim</div>}
                         {field.ai_confidence > 0 && <div style={{ fontSize: '0.7rem', color: field.ai_confidence < 0.7 ? 'var(--warning)' : 'var(--text-light)' }}>AI: {Math.round(field.ai_confidence * 100)}%</div>}
                         {!field.similarity && !field.ai_confidence && <span>{field.confidence || 0}%</span>}
+                        {field.source && <div style={{ fontSize: '0.65rem', color: 'var(--text-light)', marginTop: '0.15rem' }}>{field.source === 'ai_native' ? 'AI Vision' : field.source === 'ocr_text' ? 'OCR' : field.source}</div>}
                       </td>
                       <td><span className={`badge ${badgeClass}`}>{field.status}</span></td>
                     </tr>
@@ -490,7 +518,8 @@ function App() {
                 const found = typeof f.found === 'boolean' ? (f.found ? 'Yes' : 'No') : String(f.found || '')
                 rows.push([f.field, exp, found, f.similarity ? Math.round(f.similarity * 100) + '%' : '', f.ai_confidence ? Math.round(f.ai_confidence * 100) + '%' : '', f.status, f.rule?.citation || '', f.explanation || ''])
               })
-              const header = `Filename,${result.summary?.filename || ''}\nOverall Status,${result.result?.overall_status || ''}\nProcessing Time,${result.result?.processing_time_ms || 0}ms\n\n`
+              const r = result.result || {}
+              const header = `Filename,${result.summary?.filename || ''}\nOverall Status,${r.overall_status || ''}\nProvider Path,${r.provider_path || ''}\nEscalated,${r.escalated || false}\nEscalation Reasons,"${(r.escalation_reasons || []).join('; ')}"\nTotal Time,${r.timings?.total_time_ms || r.processing_time_ms || 0}ms\nOCR Time,${r.timings?.ocr_time_ms || 0}ms\nAI Time,${r.timings?.ai_native_time_ms || 0}ms\n\n`
               const csv = header + rows.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n')
               const blob = new Blob([csv], { type: 'text/csv' })
               const url = URL.createObjectURL(blob)
