@@ -33,6 +33,9 @@ data/
 .terragrunt-cache/
 test_vision.py
 
+# Build artifacts
+apps/web/playwright-report/
+
 # Agents
 .agents/
 sweden_quota.json

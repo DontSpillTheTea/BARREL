@@ -1,0 +1,3 @@
+apps/web/playwright-report/** linguist-generated
+apps/web/dist/** linguist-generated
+samples/** linguist-generated
