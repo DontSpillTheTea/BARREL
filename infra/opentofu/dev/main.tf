@@ -100,6 +100,9 @@ resource "azurerm_container_app" "api" {
   }
 
   template {
+    min_replicas = 1
+    max_replicas = 3
+
     container {
       name   = "api"
       image  = var.container_image_api
@@ -217,6 +220,9 @@ resource "azurerm_container_app" "web" {
   }
 
   template {
+    min_replicas = 1
+    max_replicas = 2
+
     container {
       name   = "web"
       image  = var.container_image_web

@@ -144,6 +144,7 @@ function App() {
   }
 
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [isConnecting, setIsConnecting] = useState(false)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loginUsername, setLoginUsername] = useState('evaluator')
   const [loginPassword, setLoginPassword] = useState('')
@@ -151,16 +152,17 @@ function App() {
 
   useEffect(() => {
     let m = true
+    const connectTimer = setTimeout(() => { if (m) setIsConnecting(true) }, 2000)
     const check = async () => {
       if (!reviewToken) { if (m) { setIsAuthenticated(false); setIsCheckingAuth(false) } return }
       try {
         const res = await fetch(`${apiBaseUrl}/api/v1/auth/me`, { headers: getHeaders() })
         if (m) setIsAuthenticated(res.ok)
       } catch { if (m) setIsAuthenticated(false) }
-      finally { if (m) setIsCheckingAuth(false) }
+      finally { if (m) { setIsCheckingAuth(false); setIsConnecting(false) } }
     }
     check()
-    return () => { m = false }
+    return () => { m = false; clearTimeout(connectTimer) }
   }, [apiBaseUrl, reviewToken])
 
   useEffect(() => { if (isAuthenticated) fetchHistory() }, [isAuthenticated, apiBaseUrl, reviewToken])
@@ -382,7 +384,14 @@ function App() {
     return String(val)
   }
 
-  if (isCheckingAuth) return <div className="login-wrapper"><div className="loading-spinner"></div></div>
+  if (isCheckingAuth) return (
+    <div className="login-wrapper">
+      <div style={{ textAlign: 'center' }}>
+        <div className="loading-spinner"></div>
+        {isConnecting && <p style={{ color: 'var(--text-light)', marginTop: '1rem', fontSize: '0.9rem' }}>Connecting to server...</p>}
+      </div>
+    </div>
+  )
 
   if (!isAuthenticated) {
     return (
